@@ -4,6 +4,14 @@ services:
         build:
             context: ./new_eth_node
         image: new_ethereum_node
+    707ec7fa5d3740bf02573cbd0b37e6ea:
+        build:
+            context: .
+            dockerfile: dummies/707ec7fa5d3740bf02573cbd0b37e6ea
+        image: 707ec7fa5d3740bf02573cbd0b37e6ea
+        depends_on:
+            - new_ethereum_node
+
     98a2693c996c2294358552f48373498d:
         build:
             context: .
@@ -16,14 +24,6 @@ services:
             dockerfile: dummies/39e016aa9e819f203ebc1809245a5818
         image: 39e016aa9e819f203ebc1809245a5818
 
-    707ec7fa5d3740bf02573cbd0b37e6ea:
-        build:
-            context: .
-            dockerfile: dummies/707ec7fa5d3740bf02573cbd0b37e6ea
-        image: 707ec7fa5d3740bf02573cbd0b37e6ea
-        depends_on:
-            - new_ethereum_node
-
     24e044b795288bc851bbf81da183e7a9:
         build:
             context: .
@@ -33,7 +33,7 @@ services:
 
     hnode_160_host_0:
         build: ./hnode_160_host_0
-        container_name: as160h-Ethereum-POA-00-Signer-BootNode-10.160.0.71
+        container_name: as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71
         depends_on:
             - 24e044b795288bc851bbf81da183e7a9
         cap_add:
@@ -49,18 +49,18 @@ services:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
             org.seedsecuritylabs.seedemu.meta.nodename: "host_0"
             org.seedsecuritylabs.seedemu.meta.role: "Host"
-            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POA-00-Signer-BootNode"
-            org.seedsecuritylabs.seedemu.meta.class: "[\"Signer\", \"BootNode\", \"EthereumService\"]"
+            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POW-00-Miner-BootNode"
+            org.seedsecuritylabs.seedemu.meta.class: "[\"Miner\", \"BootNode\", \"EthereumService\"]"
             org.seedsecuritylabs.seedemu.meta.ethereum.node_id: "1"
-            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POA"
-            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POA"
+            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POW"
+            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POW"
             org.seedsecuritylabs.seedemu.meta.ethereum.chain_id: "1337"
             org.seedsecuritylabs.seedemu.meta.ethereum.role: "[\"bootnode\", \"miner\"]"
             org.seedsecuritylabs.seedemu.meta.net.0.name: "net0"
             org.seedsecuritylabs.seedemu.meta.net.0.address: "10.160.0.71/24"
 
         environment:
-            - CONTAINER_NAME=as160h-Ethereum-POA-00-Signer-BootNode-10.160.0.71
+            - CONTAINER_NAME=as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71
             
     hnode_160_host_1:
         build: ./hnode_160_host_1
@@ -110,30 +110,6 @@ services:
         environment:
             - CONTAINER_NAME=as160h-host_2-10.160.0.73
             
-    hnode_160_new_eth_node:
-        build: ./hnode_160_new_eth_node
-        container_name: as160h-new_eth_node-10.160.0.74
-        depends_on:
-            - 707ec7fa5d3740bf02573cbd0b37e6ea
-        cap_add:
-            - ALL
-
-        privileged: true
-        networks:
-            net_160_net0:
-                ipv4_address: 10.160.0.74
-
-
-        labels:
-            org.seedsecuritylabs.seedemu.meta.asn: "160"
-            org.seedsecuritylabs.seedemu.meta.nodename: "new_eth_node"
-            org.seedsecuritylabs.seedemu.meta.role: "Host"
-            org.seedsecuritylabs.seedemu.meta.net.0.name: "net0"
-            org.seedsecuritylabs.seedemu.meta.net.0.address: "10.160.0.74/24"
-
-        environment:
-            - CONTAINER_NAME=as160h-new_eth_node-10.160.0.74
-            
     brdnode_160_router0:
         build: ./brdnode_160_router0
         container_name: as160brd-router0-10.160.0.254
@@ -166,7 +142,7 @@ services:
             
     hnode_161_host_0:
         build: ./hnode_161_host_0
-        container_name: as161h-Ethereum-POA-01-10.161.0.71
+        container_name: as161h-Ethereum-POW-01-Miner-10.161.0.71
         depends_on:
             - 24e044b795288bc851bbf81da183e7a9
         cap_add:
@@ -182,18 +158,18 @@ services:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
             org.seedsecuritylabs.seedemu.meta.nodename: "host_0"
             org.seedsecuritylabs.seedemu.meta.role: "Host"
-            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POA-01"
-            org.seedsecuritylabs.seedemu.meta.class: "[\"EthereumService\"]"
+            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POW-01-Miner"
+            org.seedsecuritylabs.seedemu.meta.class: "[\"Miner\", \"EthereumService\"]"
             org.seedsecuritylabs.seedemu.meta.ethereum.node_id: "2"
-            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POA"
-            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POA"
+            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POW"
+            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POW"
             org.seedsecuritylabs.seedemu.meta.ethereum.chain_id: "1337"
-            org.seedsecuritylabs.seedemu.meta.ethereum.role: "[]"
+            org.seedsecuritylabs.seedemu.meta.ethereum.role: "[\"miner\"]"
             org.seedsecuritylabs.seedemu.meta.net.0.name: "net0"
             org.seedsecuritylabs.seedemu.meta.net.0.address: "10.161.0.71/24"
 
         environment:
-            - CONTAINER_NAME=as161h-Ethereum-POA-01-10.161.0.71
+            - CONTAINER_NAME=as161h-Ethereum-POW-01-Miner-10.161.0.71
             
     hnode_161_host_1:
         build: ./hnode_161_host_1
@@ -275,7 +251,7 @@ services:
             
     hnode_162_host_0:
         build: ./hnode_162_host_0
-        container_name: as162h-Ethereum-POA-02-Signer-10.162.0.71
+        container_name: as162h-Ethereum-POW-02-Miner-10.162.0.71
         depends_on:
             - 24e044b795288bc851bbf81da183e7a9
         cap_add:
@@ -291,18 +267,18 @@ services:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
             org.seedsecuritylabs.seedemu.meta.nodename: "host_0"
             org.seedsecuritylabs.seedemu.meta.role: "Host"
-            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POA-02-Signer"
-            org.seedsecuritylabs.seedemu.meta.class: "[\"Signer\", \"EthereumService\"]"
+            org.seedsecuritylabs.seedemu.meta.displayname: "Ethereum-POW-02-Miner"
+            org.seedsecuritylabs.seedemu.meta.class: "[\"Miner\", \"EthereumService\"]"
             org.seedsecuritylabs.seedemu.meta.ethereum.node_id: "3"
-            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POA"
-            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POA"
+            org.seedsecuritylabs.seedemu.meta.ethereum.consensus: "POW"
+            org.seedsecuritylabs.seedemu.meta.ethereum.chain_name: "POW"
             org.seedsecuritylabs.seedemu.meta.ethereum.chain_id: "1337"
             org.seedsecuritylabs.seedemu.meta.ethereum.role: "[\"miner\"]"
             org.seedsecuritylabs.seedemu.meta.net.0.name: "net0"
             org.seedsecuritylabs.seedemu.meta.net.0.address: "10.162.0.71/24"
 
         environment:
-            - CONTAINER_NAME=as162h-Ethereum-POA-02-Signer-10.162.0.71
+            - CONTAINER_NAME=as162h-Ethereum-POW-02-Miner-10.162.0.71
             
     hnode_162_host_1:
         build: ./hnode_162_host_1
@@ -351,6 +327,30 @@ services:
 
         environment:
             - CONTAINER_NAME=as162h-host_2-10.162.0.73
+            
+    hnode_162_new_eth_node:
+        build: ./hnode_162_new_eth_node
+        container_name: as162h-new_eth_node-10.162.0.74
+        depends_on:
+            - 707ec7fa5d3740bf02573cbd0b37e6ea
+        cap_add:
+            - ALL
+
+        privileged: true
+        networks:
+            net_162_net0:
+                ipv4_address: 10.162.0.74
+
+
+        labels:
+            org.seedsecuritylabs.seedemu.meta.asn: "162"
+            org.seedsecuritylabs.seedemu.meta.nodename: "new_eth_node"
+            org.seedsecuritylabs.seedemu.meta.role: "Host"
+            org.seedsecuritylabs.seedemu.meta.net.0.name: "net0"
+            org.seedsecuritylabs.seedemu.meta.net.0.address: "10.162.0.74/24"
+
+        environment:
+            - CONTAINER_NAME=as162h-new_eth_node-10.162.0.74
             
     brdnode_162_router0:
         build: ./brdnode_162_router0

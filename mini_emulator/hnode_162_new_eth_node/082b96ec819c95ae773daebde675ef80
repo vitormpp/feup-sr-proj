@@ -2,7 +2,7 @@
 chmod +x /interface_setup
 /interface_setup
 ip rou del default 2> /dev/null
-ip route add default via 10.160.0.254 dev net0
+ip route add default via 10.162.0.254 dev net0
 
 echo "ready! run 'docker exec -it $HOSTNAME /bin/zsh' to attach to this node" >&2
 echo 0 > /proc/sys/net/ipv4/conf/all/rp_filter
