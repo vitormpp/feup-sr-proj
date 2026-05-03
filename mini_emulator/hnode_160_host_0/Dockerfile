@@ -15,5 +15,6 @@ COPY d2cdff8371aa6af79bb63954a87ac69f /tmp/eth-password
 COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
 COPY eth_startup.py /eth_startup.py
+RUN pip3 install web3
 CMD ["/start.sh"]
 
