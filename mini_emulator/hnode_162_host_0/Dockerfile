@@ -14,5 +14,6 @@ COPY 33cd6d6b274ee889da140ae8cc0f8bdd /tmp/keystore/UTC--2026-04-12T17-51-36.387
 COPY d2cdff8371aa6af79bb63954a87ac69f /tmp/eth-password
 COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
+COPY eth_startup.py /eth_startup.py
 CMD ["/start.sh"]
 
