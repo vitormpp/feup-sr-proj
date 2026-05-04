@@ -20,7 +20,7 @@ import logging
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# Configuration
 
 RPC_URL  = os.environ.get("ETH_RPC_URL", "http://localhost:8545")
 CHAIN_ID = int(os.environ.get("ETH_CHAIN_ID", "1337"))
@@ -69,7 +69,7 @@ MAX_DELAY = float(os.environ.get("MAX_DELAY", "30"))
 # How long to wait for geth to become ready before starting (seconds)
 GETH_READY_TIMEOUT = int(os.environ.get("GETH_READY_TIMEOUT", str(60 * 20)))
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# Logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,7 +78,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("eth_loop")
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# Helpers
 
 def wait_for_geth(w3: Web3) -> bool:
     while True:
@@ -121,7 +121,7 @@ def send_random_tx(w3: Web3) -> None:
              amount_eth, sender[:10] + "…", recipient[:10] + "…", tx_hash.hex())
 
 
-# ── Main ─────────────────────────────────────────────────────────────────────
+# Main
 
 def main():
     hostname  = socket.gethostname()
