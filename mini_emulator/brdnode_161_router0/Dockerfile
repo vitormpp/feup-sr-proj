@@ -1,5 +1,7 @@
 FROM 39e016aa9e819f203ebc1809245a5818
 ARG DEBIAN_FRONTEND=noninteractive
+RUN mkdir -p /usr/share/doc/bird2/examples/
+RUN touch /usr/share/doc/bird2/examples/bird.conf
 COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 COPY d18858afc6bb66ec3a19d872077acfd2 /seedemu_sniffer
 COPY 17ac2d812a99a91e7f747e1defb72a29 /seedemu_worker

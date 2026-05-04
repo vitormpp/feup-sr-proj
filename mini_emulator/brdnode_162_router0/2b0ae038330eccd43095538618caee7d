@@ -1,4 +1,4 @@
-router id 10.0.0.26;
+router id 10.0.0.3;
 ipv4 table t_direct;
 protocol device {
 }
@@ -18,10 +18,10 @@ protocol direct local_nets {
     interface "net0";
 
 }
-define LOCAL_COMM = (160, 0, 0);
-define CUSTOMER_COMM = (160, 1, 0);
-define PEER_COMM = (160, 2, 0);
-define PROVIDER_COMM = (160, 3, 0);
+define LOCAL_COMM = (162, 0, 0);
+define CUSTOMER_COMM = (162, 1, 0);
+define PEER_COMM = (162, 2, 0);
+define PROVIDER_COMM = (162, 3, 0);
 ipv4 table t_bgp;
 protocol pipe {
     table t_bgp;
@@ -35,19 +35,19 @@ protocol pipe {
     import none;
     export filter { bgp_large_community.add(LOCAL_COMM); bgp_local_pref = 40; accept; };
 }
-protocol bgp u_as3 {
+protocol bgp p_rs103 {
     ipv4 {
         table t_bgp;
         import filter {
-            bgp_large_community.add(PROVIDER_COMM);
-            bgp_local_pref = 10;
+            bgp_large_community.add(PEER_COMM);
+            bgp_local_pref = 20;
             accept;
         };
         export where bgp_large_community ~ [LOCAL_COMM, CUSTOMER_COMM];
         next hop self;
     };
-    local 10.103.0.160 as 160;
-    neighbor 10.103.0.3 as 3;
+    local 10.103.0.162 as 162;
+    neighbor 10.103.0.103 as 103;
 }
 ipv4 table t_ospf;
 protocol ospf ospf1 {
