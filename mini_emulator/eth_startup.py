@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-Ethereum node startup script.
-Runs after the container has finished all other setup.
-Starts a loop that sends random ETH transactions at random intervals.
+Shared Ethereum node startup script.
+
+Mounted into each miner container at /eth_startup.py. Per-host configuration
+(unlocked sender accounts) is supplied via the SENDER_ACCOUNTS environment
+variable as a comma-separated list of 0x-prefixed addresses.
+
+Runs after the container has finished all other setup. Starts a loop that
+sends random ETH transactions at random intervals.
 """
 
+import os
 import socket
 import datetime
 import time
@@ -12,22 +18,24 @@ import random
 import logging
 
 from web3 import Web3
-# NEW (web3 < 6.x / Python 3.8 environment)
 from web3.middleware import geth_poa_middleware
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-RPC_URL          = "http://localhost:8545"
-CHAIN_ID         = 1337
+RPC_URL  = os.environ.get("ETH_RPC_URL", "http://localhost:8545")
+CHAIN_ID = int(os.environ.get("ETH_CHAIN_ID", "1337"))
 
-# Accounts that are unlocked in geth (see start.sh --unlock flag)
-SENDER_ACCOUNTS = [
-    "0x8c400205fDb103431F6aC7409655ad3cf8f6d007",
-    "0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe",
-]
 
-# Pool of destination addresses drawn from the genesis alloc
-RECIPIENT_POOL   = [
+def _parse_addr_list(raw: str) -> list:
+    return [a.strip() for a in raw.split(",") if a.strip()]
+
+
+# Accounts unlocked in this geth instance — must be set per-container.
+SENDER_ACCOUNTS = _parse_addr_list(os.environ.get("SENDER_ACCOUNTS", ""))
+
+# Pool of destination addresses drawn from the genesis alloc. Override via
+# RECIPIENT_POOL env var (comma-separated) if needed.
+DEFAULT_RECIPIENT_POOL = [
     "0xF5406927254d2dA7F7c28A61191e3Ff1f2400fe9",
     "0x2e2e3a61daC1A2056d9304F79C168cD16aAa88e9",
     "0xCBF1e330F0abD5c1ac979CF2B2B874cfD4902E24",
@@ -41,22 +49,25 @@ RECIPIENT_POOL   = [
     "0xf77d3Bb88460C58784c3112A1289D68105e28f60",
     "0x477a4e1fcdF12Cb8bAba4eAD4c43F1fF26cCeD12",
     "0x830EB42863505ACf1127905C835B6A7a36760Fa0",
+    "0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F",
+    "0xA403f63AD02a557D5DDCBD5F5af9A7627C591034",
     "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19",
     "0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A",
     "0x8c400205fDb103431F6aC7409655ad3cf8f6d007",
     "0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe",
 ]
+RECIPIENT_POOL = _parse_addr_list(os.environ.get("RECIPIENT_POOL", "")) or DEFAULT_RECIPIENT_POOL
 
 # Amount range to send per transaction (in ETH)
-MIN_ETH = 0.001
-MAX_ETH = 0.1
+MIN_ETH = float(os.environ.get("MIN_ETH", "0.001"))
+MAX_ETH = float(os.environ.get("MAX_ETH", "0.1"))
 
 # Delay range between transactions (in seconds)
-MIN_DELAY = 5
-MAX_DELAY = 30
+MIN_DELAY = float(os.environ.get("MIN_DELAY", "5"))
+MAX_DELAY = float(os.environ.get("MAX_DELAY", "30"))
 
 # How long to wait for geth to become ready before starting (seconds)
-GETH_READY_TIMEOUT = 60*20
+GETH_READY_TIMEOUT = int(os.environ.get("GETH_READY_TIMEOUT", str(60 * 20)))
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
@@ -81,7 +92,6 @@ def wait_for_geth(w3: Web3) -> bool:
         except Exception as e:
             log.info("Connection attempt failed: %s: %s", type(e).__name__, e)
         time.sleep(3)
-        
 
 
 def send_random_tx(w3: Web3) -> None:
@@ -91,8 +101,7 @@ def send_random_tx(w3: Web3) -> None:
     amount_eth = round(random.uniform(MIN_ETH, MAX_ETH), 6)
     amount_wei = w3.to_wei(amount_eth, "ether")
 
-    # Check the sender has enough balance (leave some for gas)
-    balance = w3.eth.get_balance(sender)
+    balance   = w3.eth.get_balance(sender)
     gas_price = w3.eth.gas_price
     gas_limit = 21_000
     if balance < amount_wei + gas_price * gas_limit:
@@ -119,16 +128,21 @@ def main():
     timestamp = datetime.datetime.now().isoformat()
     log.info("[%s] Ethereum node '%s' startup script running.", timestamp, hostname)
 
+    if not SENDER_ACCOUNTS:
+        log.error("SENDER_ACCOUNTS is empty — set the env var to a comma-separated "
+                  "list of unlocked addresses. Exiting.")
+        return
+
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
-    # Required for PoA / clique / ethash dev chains that add extra data to headers
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
-    if not wait_for_geth(w3, GETH_READY_TIMEOUT):
+    if not wait_for_geth(w3):
         log.error("Geth RPC never became ready after %ss — exiting.", GETH_READY_TIMEOUT)
         return
 
-    log.info("Starting random transaction loop  (%.3f–%.3f ETH every %d–%ds)",
-             MIN_ETH, MAX_ETH, MIN_DELAY, MAX_DELAY)
+    log.info("Starting random transaction loop  (%.3f–%.3f ETH every %.0f–%.0fs) "
+             "with %d sender(s)",
+             MIN_ETH, MAX_ETH, MIN_DELAY, MAX_DELAY, len(SENDER_ACCOUNTS))
 
     while True:
         try:

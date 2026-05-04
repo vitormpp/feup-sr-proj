@@ -14,7 +14,6 @@ COPY 24da0707efca993945a39dd45da3dce1 /tmp/keystore/UTC--2026-04-12T17-51-33.218
 COPY d2cdff8371aa6af79bb63954a87ac69f /tmp/eth-password
 COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
-COPY eth_startup.py /eth_startup.py
-RUN pip3 install web3
+RUN pip3 install 'web3>=6,<7'
 CMD ["/start.sh"]
 
