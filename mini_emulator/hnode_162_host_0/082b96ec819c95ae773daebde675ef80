@@ -4,13 +4,19 @@ chmod +x /interface_setup
 ip rou del default 2> /dev/null
 ip route add default via 10.162.0.254 dev net0
 [ ! -e "/root/.ethereum/geth/nodekey" ] && geth --datadir /root/.ethereum init /tmp/eth-genesis.json
-cp /tmp/keystore/UTC--2024-03-12T14-38-31.790811000Z--0xa888497f7938825F80F35867a1E707F42b9b347D /root/.ethereum/keystore/
-cp /tmp/keystore/UTC--2024-03-12T14-38-34.240470000Z--0xCe0624bB973438a89E81B86cf68A0dbB167372A5 /root/.ethereum/keystore/
+cp /tmp/keystore/UTC--2026-04-12T17-51-35.613083000Z--0x8c400205fDb103431F6aC7409655ad3cf8f6d007 /root/.ethereum/keystore/
+cp /tmp/keystore/UTC--2026-04-12T17-51-36.387215000Z--0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe /root/.ethereum/keystore/
 chmod +x /tmp/eth-bootstrapper
 /tmp/eth-bootstrapper
-geth --datadir /root/.ethereum --identity="NODE_8" --networkid=1337 --syncmode full --snapshot=False --verbosity=2 --allow-insecure-unlock --port 30303 --bootnodes "$(cat /tmp/eth-node-urls)" --http --http.addr 0.0.0.0 --http.port 8545 --http.corsdomain "*" --http.api web3,eth,debug,personal,net,clique,engine,admin,txpool --unlock "0xa888497f7938825F80F35867a1E707F42b9b347D, 0xCe0624bB973438a89E81B86cf68A0dbB167372A5" --password "/tmp/eth-password"                             &
+nice -n 19 geth --datadir /root/.ethereum --identity="NODE_3" --networkid=1337 --syncmode full --snapshot=False --verbosity=2 --allow-insecure-unlock --port 30303 --bootnodes "$(cat /tmp/eth-node-urls)" --http --http.addr 0.0.0.0 --http.port 8545 --http.corsdomain "*" --http.api web3,eth,debug,net,engine,admin,txpool --unlock "0x8c400205fDb103431F6aC7409655ad3cf8f6d007, 0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe" --password "/tmp/eth-password"                             --miner.etherbase "0x8c400205fDb103431F6aC7409655ad3cf8f6d007" --mine --miner.threads=1 &
 
 echo "ready! run 'docker exec -it $HOSTNAME /bin/zsh' to attach to this node" >&2
-for f in /proc/sys/net/ipv4/conf/*/rp_filter; do echo 0 > "$f"; done
+echo 0 > /proc/sys/net/ipv4/conf/all/rp_filter
+echo 0 > /proc/sys/net/ipv4/conf/default/rp_filter
+sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1
+sysctl -w net.ipv4.udp_rmem_min=4000 > /dev/null 2>&1
+sysctl -w net.ipv4.udp_wmem_min=4000 > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_rmem="4096 131072 6291456" > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_wmem="4096 16384 4194304" > /dev/null 2>&1
 tail -f /dev/null
 
