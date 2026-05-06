@@ -22,8 +22,35 @@ def generate_random_ip():
 def generate_random_port():
     return random.randint(1024, 65535)
 
+# Targets drawn from mini_emulator/docker-compose.yml.
+# Ethereum miner hosts (*.0.71) expose geth: 8545 (HTTP RPC), 8546 (WebSocket),
+# 30303 (P2P/discovery). Plain SEED hosts have sshd on 22. Border routers run
+# BGP on 179. The IX route server (10.103.0.103) also speaks BGP.
 targets_to_open_ports = {
-    "10.10.10.10": [10]  # test target
+    # AS160 - net_160_net0
+    "10.160.0.71":  [8545, 8546, 30303, 22],  # hnode_160_host_0 (miner + bootnode)
+    "10.160.0.72":  [22],                      # hnode_160_host_1
+    "10.160.0.73":  [22],                      # hnode_160_host_2
+    "10.160.0.254": [179],                     # brdnode_160_router0
+
+    # AS161 - net_161_net0
+    "10.161.0.71":  [8545, 8546, 30303, 22],  # hnode_161_host_0 (miner)
+    "10.161.0.72":  [22],                      # hnode_161_host_1
+    "10.161.0.73":  [22],                      # hnode_161_host_2
+    "10.161.0.254": [179],                     # brdnode_161_router0
+
+    # AS162 - net_162_net0
+    "10.162.0.71":  [8545, 8546, 30303, 22],  # hnode_162_host_0 (miner)
+    "10.162.0.72":  [22],                      # hnode_162_host_1
+    "10.162.0.73":  [22],                      # hnode_162_host_2
+    "10.162.0.74":  [22],                      # hnode_162_new_eth_node
+    "10.162.0.254": [179],                     # brdnode_162_router0
+
+    # IX103 - net_ix_ix103
+    "10.103.0.103": [179],                     # rs_ix_ix103 (route server)
+    "10.103.0.160": [179],                     # brdnode_160_router0 (ix side)
+    "10.103.0.161": [179],                     # brdnode_161_router0 (ix side)
+    "10.103.0.162": [179],                     # brdnode_162_router0 (ix side)
 }
 
 def run_round(num_packets):

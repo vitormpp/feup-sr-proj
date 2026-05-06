@@ -22,7 +22,7 @@ sysctl -w net.ipv4.udp_rmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.udp_wmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_rmem="4096 131072 6291456" > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_wmem="4096 16384 4194304" > /dev/null 2>&1
-python3 /traffic_gen.py &
-python3 /eth_startup.py &
+[ "${START_TRAFFIC_GEN:-0}" = "1" ] && python3 /traffic_gen.py &
+[ "${START_ETH_LOOP:-0}" = "1" ] && python3 /eth_startup.py &
 tail -f /dev/null
 

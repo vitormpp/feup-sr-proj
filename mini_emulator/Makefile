@@ -37,6 +37,23 @@ LOG_DIR      ?= $(WORK_DIR)/logs
 # Compose networks to capture on (must match docker-compose.yml)
 NETWORKS     := net_160_net0 net_161_net0 net_162_net0 net_ix_ix103
 
+# Miner containers that host /eth_startup.py (random tx loop)
+ETH_NODES    := as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 \
+                as161h-Ethereum-POW-01-Miner-10.161.0.71 \
+                as162h-Ethereum-POW-02-Miner-10.162.0.71
+
+# Host containers that host /traffic_gen.py (background traffic generator)
+TRAFFIC_NODES := as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 \
+                 as160h-host_1-10.160.0.72 \
+                 as160h-host_2-10.160.0.73 \
+                 as161h-Ethereum-POW-01-Miner-10.161.0.71 \
+                 as161h-host_1-10.161.0.72 \
+                 as161h-host_2-10.161.0.73 \
+                 as162h-Ethereum-POW-02-Miner-10.162.0.71 \
+                 as162h-host_1-10.162.0.72 \
+                 as162h-host_2-10.162.0.73 \
+                 as162h-new_eth_node-10.162.0.74
+
 # --- Detection / attack defaults ------------------------------------------- #
 IFACE        ?=
 DETECT_PCAP  ?=
@@ -59,7 +76,7 @@ TRAIN_SCRIPT  := $(MKFILE_DIR)train_outlier_model.py
 DETECT_SCRIPT := $(MKFILE_DIR)run_model.py
 ATTACK_SCRIPT := $(MKFILE_DIR)../syn_flood/perform_flood.py
 
-.PHONY: help up down list-bridges capture train all detect attack clean check-root check-trained
+.PHONY: help up down list-bridges capture train all detect attack clean check-root check-trained eth-traffic eth-traffic-stop traffic-gen traffic-gen-stop
 
 # =============================================================================
 help:
@@ -73,6 +90,10 @@ help:
 	@echo "  sudo make detect IFACE=br-XXXX  live anomaly detection on an interface"
 	@echo "       make detect DETECT_PCAP=f  replay-mode detection on a pcap"
 	@echo "  make attack                     run perform_flood.py (ATTACK_REPS, ATTACK_PKTS)"
+	@echo "  make eth-traffic                start /eth_startup.py inside each miner"
+	@echo "  make eth-traffic-stop           stop the eth_startup loops"
+	@echo "  make traffic-gen                start /traffic_gen.py inside each host"
+	@echo "  make traffic-gen-stop           stop the traffic_gen loops"
 	@echo "  make clean                      rm -rf \$$(WORK_DIR)"
 	@echo ""
 	@echo "Resolved settings:"
@@ -227,6 +248,57 @@ attack:
 	    echo "ERROR: $(ATTACK_SCRIPT) not found." >&2; exit 1; \
 	fi
 	$(PYTHON) "$(ATTACK_SCRIPT)" -r $(ATTACK_REPS) -n $(ATTACK_PKTS)
+
+# =============================================================================
+# Start the random-tx loop (eth_startup.py) inside each miner. The script is
+# bind-mounted at /eth_startup.py, so no rebuild is needed. The container's
+# SENDER_ACCOUNTS env var is inherited automatically.
+eth-traffic:
+	@for c in $(ETH_NODES); do
+	    if docker ps --format '{{.Names}}' | grep -qx "$$c"; then
+	        if docker exec "$$c" pgrep -f "python3 /eth_startup.py" >/dev/null 2>&1; then
+	            echo "  $$c: already running"
+	        else
+	            echo "  $$c: starting eth_startup.py"
+	            docker exec -d "$$c" sh -c "python3 /eth_startup.py >> /tmp/eth_startup.log 2>&1"
+	        fi
+	    else
+	        echo "  WARN: container $$c not running"
+	    fi
+	done
+
+eth-traffic-stop:
+	@for c in $(ETH_NODES); do
+	    if docker ps --format '{{.Names}}' | grep -qx "$$c"; then
+	        echo "  $$c: stopping eth_startup.py"
+	        docker exec "$$c" pkill -f "python3 /eth_startup.py" 2>/dev/null || true
+	    fi
+	done
+
+# =============================================================================
+# Start the background traffic generator (traffic_gen.py) inside every host
+# container. Bind-mounted at /traffic_gen.py, so no rebuild is needed.
+traffic-gen:
+	@for c in $(TRAFFIC_NODES); do
+	    if docker ps --format '{{.Names}}' | grep -qx "$$c"; then
+	        if docker exec "$$c" pgrep -f "python3 /traffic_gen.py" >/dev/null 2>&1; then
+	            echo "  $$c: already running"
+	        else
+	            echo "  $$c: starting traffic_gen.py"
+	            docker exec -d "$$c" sh -c "python3 /traffic_gen.py >> /tmp/traffic_gen.log 2>&1"
+	        fi
+	    else
+	        echo "  WARN: container $$c not running"
+	    fi
+	done
+
+traffic-gen-stop:
+	@for c in $(TRAFFIC_NODES); do
+	    if docker ps --format '{{.Names}}' | grep -qx "$$c"; then
+	        echo "  $$c: stopping traffic_gen.py"
+	        docker exec "$$c" pkill -f "python3 /traffic_gen.py" 2>/dev/null || true
+	    fi
+	done
 
 # =============================================================================
 clean:
