@@ -18,7 +18,36 @@ import random
 import logging
 
 from web3 import Web3
-from web3.middleware import geth_poa_middleware
+try:
+    from web3.middleware import geth_poa_middleware
+except ImportError:
+    geth_poa_middleware = None
+
+# ---- web3 v5/v6 compatibility helpers ----
+
+def _w3_is_connected(w3):
+    return w3.isConnected() if hasattr(w3, 'isConnected') else w3.is_connected()
+
+def _w3_to_wei(w3, amount, unit):
+    return w3.toWei(amount, unit) if hasattr(w3, 'toWei') else w3.to_wei(amount, unit)
+
+def _w3_from_wei(w3, amount, unit):
+    return w3.fromWei(amount, unit) if hasattr(w3, 'fromWei') else w3.from_wei(amount, unit)
+
+def _w3_checksum(addr):
+    return Web3.toChecksumAddress(addr) if hasattr(Web3, 'toChecksumAddress') else Web3.to_checksum_address(addr)
+
+def _w3_get_balance(w3, addr):
+    return w3.eth.getBalance(addr) if hasattr(w3.eth, 'getBalance') else w3.eth.get_balance(addr)
+
+def _w3_gas_price(w3):
+    return w3.eth.gasPrice if hasattr(w3.eth, 'gasPrice') else w3.eth.gas_price
+
+def _w3_chain_id(w3):
+    return w3.eth.chainId if hasattr(w3.eth, 'chainId') else w3.eth.chain_id
+
+def _w3_send_tx(w3, tx):
+    return w3.eth.sendTransaction(tx) if hasattr(w3.eth, 'sendTransaction') else w3.eth.send_transaction(tx)
 
 # Configuration
 
@@ -83,12 +112,12 @@ log = logging.getLogger("eth_loop")
 def wait_for_geth(w3: Web3) -> bool:
     while True:
         try:
-            if w3.is_connected():
-                chain_id = w3.eth.chain_id
+            if _w3_is_connected(w3):
+                chain_id = _w3_chain_id(w3)
                 log.info("Connected to geth (chain ID %s)", chain_id)
                 return True
             else:
-                log.info("w3.is_connected() returned False")
+                log.info("geth not connected yet")
         except Exception as e:
             log.info("Connection attempt failed: %s: %s", type(e).__name__, e)
         time.sleep(3)
@@ -99,19 +128,19 @@ def send_random_tx(w3: Web3) -> None:
     sender    = random.choice(SENDER_ACCOUNTS)
     recipient = random.choice([a for a in RECIPIENT_POOL if a.lower() != sender.lower()])
     amount_eth = round(random.uniform(MIN_ETH, MAX_ETH), 6)
-    amount_wei = w3.to_wei(amount_eth, "ether")
+    amount_wei = _w3_to_wei(w3, amount_eth, "ether")
 
-    balance   = w3.eth.get_balance(sender)
-    gas_price = w3.eth.gas_price
+    balance   = _w3_get_balance(w3, sender)
+    gas_price = _w3_gas_price(w3)
     gas_limit = 21_000
     if balance < amount_wei + gas_price * gas_limit:
         log.warning("Sender %s has insufficient balance (%s ETH), skipping",
-                    sender, w3.from_wei(balance, "ether"))
+                    sender, _w3_from_wei(w3, balance, "ether"))
         return
 
-    tx_hash = w3.eth.send_transaction({
+    tx_hash = _w3_send_tx(w3, {
         "from":     sender,
-        "to":       Web3.to_checksum_address(recipient),
+        "to":       _w3_checksum(recipient),
         "value":    amount_wei,
         "gas":      gas_limit,
         "gasPrice": gas_price,
@@ -134,7 +163,8 @@ def main():
         return
 
     w3 = Web3(Web3.HTTPProvider(RPC_URL))
-    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    if geth_poa_middleware is not None:
+        w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
     if not wait_for_geth(w3):
         log.error("Geth RPC never became ready after %ss — exiting.", GETH_READY_TIMEOUT)
