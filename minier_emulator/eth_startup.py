@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""
+Shared Ethereum node startup script.
+
+Mounted into each miner container at /eth_startup.py. Per-host configuration
+(unlocked sender accounts) is supplied via the SENDER_ACCOUNTS environment
+variable as a comma-separated list of 0x-prefixed addresses.
+
+Runs after the container has finished all other setup. Starts a loop that
+sends random ETH transactions at random intervals.
+"""
+
+import os
+import socket
+import datetime
+import time
+import random
+import logging
+
+from web3 import Web3
+try:
+    from web3.middleware import geth_poa_middleware
+except ImportError:
+    geth_poa_middleware = None
+
+# ---- web3 v5/v6 compatibility helpers ----
+
+def _w3_is_connected(w3):
+    return w3.isConnected() if hasattr(w3, 'isConnected') else w3.is_connected()
+
+def _w3_to_wei(w3, amount, unit):
+    return w3.toWei(amount, unit) if hasattr(w3, 'toWei') else w3.to_wei(amount, unit)
+
+def _w3_from_wei(w3, amount, unit):
+    return w3.fromWei(amount, unit) if hasattr(w3, 'fromWei') else w3.from_wei(amount, unit)
+
+def _w3_checksum(addr):
+    return Web3.toChecksumAddress(addr) if hasattr(Web3, 'toChecksumAddress') else Web3.to_checksum_address(addr)
+
+def _w3_get_balance(w3, addr):
+    return w3.eth.getBalance(addr) if hasattr(w3.eth, 'getBalance') else w3.eth.get_balance(addr)
+
+def _w3_gas_price(w3):
+    return w3.eth.gasPrice if hasattr(w3.eth, 'gasPrice') else w3.eth.gas_price
+
+def _w3_chain_id(w3):
+    return w3.eth.chainId if hasattr(w3.eth, 'chainId') else w3.eth.chain_id
+
+def _w3_send_tx(w3, tx):
+    return w3.eth.sendTransaction(tx) if hasattr(w3.eth, 'sendTransaction') else w3.eth.send_transaction(tx)
+
+# Configuration
+
+RPC_URL  = os.environ.get("ETH_RPC_URL", "http://localhost:8545")
+CHAIN_ID = int(os.environ.get("ETH_CHAIN_ID", "1337"))
+
+
+def _parse_addr_list(raw: str) -> list:
+    return [a.strip() for a in raw.split(",") if a.strip()]
+
+
+# Accounts unlocked in this geth instance — must be set per-container.
+SENDER_ACCOUNTS = _parse_addr_list(os.environ.get("SENDER_ACCOUNTS", ""))
+
+# Pool of destination addresses drawn from the genesis alloc. Override via
+# RECIPIENT_POOL env var (comma-separated) if needed.
+DEFAULT_RECIPIENT_POOL = [
+    "0xF5406927254d2dA7F7c28A61191e3Ff1f2400fe9",
+    "0x2e2e3a61daC1A2056d9304F79C168cD16aAa88e9",
+    "0xCBF1e330F0abD5c1ac979CF2B2B874cfD4902E24",
+    "0xA2a28c011e281CA0dA0D878A82d854FD789C154c",
+    "0x513C434dBA61AE5CFEf4552daC2D2f85450870aA",
+    "0xBaED4A4Fffff4e047B8a39F00284732eF6244f4B",
+    "0xF5D434D36dD2bF53d2D1dB4FD40076A0C1C44F8d",
+    "0x3eE934c34747460C7083Ad052bab58E6DF5dbd84",
+    "0x94Bfb5a96B191011892e23bceB2d1ae22B4f1C25",
+    "0x468DaF3c6E9a79255F4b2985A3801C791Aa9037d",
+    "0xf77d3Bb88460C58784c3112A1289D68105e28f60",
+    "0x477a4e1fcdF12Cb8bAba4eAD4c43F1fF26cCeD12",
+    "0x830EB42863505ACf1127905C835B6A7a36760Fa0",
+    "0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F",
+    "0xA403f63AD02a557D5DDCBD5F5af9A7627C591034",
+    "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19",
+    "0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A",
+    "0x8c400205fDb103431F6aC7409655ad3cf8f6d007",
+    "0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe",
+]
+RECIPIENT_POOL = _parse_addr_list(os.environ.get("RECIPIENT_POOL", "")) or DEFAULT_RECIPIENT_POOL
+
+# Amount range to send per transaction (in ETH)
+MIN_ETH = float(os.environ.get("MIN_ETH", "0.001"))
+MAX_ETH = float(os.environ.get("MAX_ETH", "0.1"))
+
+# Delay range between transactions (in seconds)
+MIN_DELAY = float(os.environ.get("MIN_DELAY", "5"))
+MAX_DELAY = float(os.environ.get("MAX_DELAY", "30"))
+
+# How long to wait for geth to become ready before starting (seconds)
+GETH_READY_TIMEOUT = int(os.environ.get("GETH_READY_TIMEOUT", str(60 * 20)))
+
+# Logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("eth_loop")
+
+# Helpers
+
+def wait_for_geth(w3: Web3) -> bool:
+    while True:
+        try:
+            if _w3_is_connected(w3):
+                chain_id = _w3_chain_id(w3)
+                log.info("Connected to geth (chain ID %s)", chain_id)
+                return True
+            else:
+                log.info("geth not connected yet")
+        except Exception as e:
+            log.info("Connection attempt failed: %s: %s", type(e).__name__, e)
+        time.sleep(3)
+
+
+def send_random_tx(w3: Web3) -> None:
+    """Pick a random sender/recipient/amount and broadcast a transaction."""
+    sender    = random.choice(SENDER_ACCOUNTS)
+    recipient = random.choice([a for a in RECIPIENT_POOL if a.lower() != sender.lower()])
+    amount_eth = round(random.uniform(MIN_ETH, MAX_ETH), 6)
+    amount_wei = _w3_to_wei(w3, amount_eth, "ether")
+
+    balance   = _w3_get_balance(w3, sender)
+    gas_price = _w3_gas_price(w3)
+    gas_limit = 21_000
+    if balance < amount_wei + gas_price * gas_limit:
+        log.warning("Sender %s has insufficient balance (%s ETH), skipping",
+                    sender, _w3_from_wei(w3, balance, "ether"))
+        return
+
+    tx_hash = _w3_send_tx(w3, {
+        "from":     sender,
+        "to":       _w3_checksum(recipient),
+        "value":    amount_wei,
+        "gas":      gas_limit,
+        "gasPrice": gas_price,
+    })
+
+    log.info("Sent %.6f ETH  |  %s → %s  |  tx: %s",
+             amount_eth, sender[:10] + "…", recipient[:10] + "…", tx_hash.hex())
+
+
+# Main
+
+def main():
+    hostname  = socket.gethostname()
+    timestamp = datetime.datetime.now().isoformat()
+    log.info("[%s] Ethereum node '%s' startup script running.", timestamp, hostname)
+
+    if not SENDER_ACCOUNTS:
+        log.error("SENDER_ACCOUNTS is empty — set the env var to a comma-separated "
+                  "list of unlocked addresses. Exiting.")
+        return
+
+    w3 = Web3(Web3.HTTPProvider(RPC_URL))
+    if geth_poa_middleware is not None:
+        w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+    if not wait_for_geth(w3):
+        log.error("Geth RPC never became ready after %ss — exiting.", GETH_READY_TIMEOUT)
+        return
+
+    log.info("Starting random transaction loop  (%.3f–%.3f ETH every %.0f–%.0fs) "
+             "with %d sender(s)",
+             MIN_ETH, MAX_ETH, MIN_DELAY, MAX_DELAY, len(SENDER_ACCOUNTS))
+
+    while True:
+        try:
+            send_random_tx(w3)
+        except Exception as exc:
+            log.error("Transaction failed: %s", exc)
+
+        delay = random.uniform(MIN_DELAY, MAX_DELAY)
+        log.debug("Sleeping %.1fs until next transaction…", delay)
+        time.sleep(delay)
+
+
+if __name__ == "__main__":
+    main()

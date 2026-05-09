@@ -1,0 +1,32 @@
+router id 10.103.0.103;
+ipv4 table t_direct;
+protocol device {
+}
+protocol bgp p_as160 {
+    ipv4 {
+        import all;
+        export all;
+    };
+    rs client;
+    local 10.103.0.103 as 103;
+    neighbor 10.103.0.160 as 160;
+}
+protocol bgp p_as161 {
+    ipv4 {
+        import all;
+        export all;
+    };
+    rs client;
+    local 10.103.0.103 as 103;
+    neighbor 10.103.0.161 as 161;
+}
+protocol bgp p_as162 {
+    ipv4 {
+        import all;
+        export all;
+    };
+    rs client;
+    local 10.103.0.103 as 103;
+    neighbor 10.103.0.162 as 162;
+}
+

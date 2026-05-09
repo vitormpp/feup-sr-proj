@@ -1,0 +1,30 @@
+#!/bin/bash
+chmod +x /interface_setup
+/interface_setup
+ip rou del default 2> /dev/null
+ip route add default via 10.160.0.254 dev net0
+[ ! -e "/root/.ethereum/geth/nodekey" ] && geth --datadir /root/.ethereum init /tmp/eth-genesis.json
+cp /tmp/keystore/UTC--2026-04-12T17-51-32.425690000Z--0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F /root/.ethereum/keystore/
+cp /tmp/keystore/UTC--2026-04-12T17-51-33.218470000Z--0xA403f63AD02a557D5DDCBD5F5af9A7627C591034 /root/.ethereum/keystore/
+[ ! -e "/root/.ethereum/geth/bootkey" ] && bootnode -genkey /root/.ethereum/geth/bootkey
+echo "enode://$(bootnode -nodekey /root/.ethereum/geth/bootkey -writeaddress)@10.160.0.71:30301" > /tmp/eth-enode-url
+bootnode -nodekey /root/.ethereum/geth/bootkey -verbosity 9 -addr 10.160.0.71:30301 2> /tmp/bootnode-logs &
+python3 -m http.server 8088 -d /tmp &
+chmod +x /tmp/eth-bootstrapper
+/tmp/eth-bootstrapper
+nice -n 19 geth --datadir /root/.ethereum --identity="NODE_1" --networkid=1337 --syncmode full --snapshot=False --verbosity=2 --allow-insecure-unlock --port 30303 --bootnodes "$(cat /tmp/eth-node-urls)" --http --http.addr 0.0.0.0 --http.port 8545 --http.corsdomain "*" --http.api web3,eth,debug,net,engine,admin,txpool --unlock "0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F, 0xA403f63AD02a557D5DDCBD5F5af9A7627C591034" --password "/tmp/eth-password"                             --miner.etherbase "0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F" --mine --miner.threads=1 &
+
+echo "ready! run 'docker exec -it $HOSTNAME /bin/zsh' to attach to this node" >&2
+echo 0 > /proc/sys/net/ipv4/conf/all/rp_filter
+echo 0 > /proc/sys/net/ipv4/conf/default/rp_filter
+sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1
+sysctl -w net.ipv4.udp_rmem_min=4000 > /dev/null 2>&1
+sysctl -w net.ipv4.udp_wmem_min=4000 > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_rmem="4096 131072 6291456" > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_wmem="4096 16384 4194304" > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_syncookies=0 > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_max_syn_backlog=128 > /dev/null 2>&1
+python3 /traffic_gen.py &
+python3 /eth_startup.py &
+tail -f /dev/null
+
