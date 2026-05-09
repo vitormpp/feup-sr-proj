@@ -186,4 +186,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if os.environ.get("GEN_ETH_TRAFFIC", "").lower() in ["1", "true", "yes"]:
+        main()
+    else:
+        log.info("GEN_ETH_TRAFFIC not enabled — traffic generator disabled.")

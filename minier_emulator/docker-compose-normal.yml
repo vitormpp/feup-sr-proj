@@ -61,8 +61,8 @@ services:
         environment:
             - CONTAINER_NAME=as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71
             - SENDER_ACCOUNTS=0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F,0xA403f63AD02a557D5DDCBD5F5af9A7627C591034
-            - GEN_ETH_TRAFFIC=false
-            - GEN_EXTRA_TRAFFIC=false
+            - GEN_ETH_TRAFFIC=true
+            - GEN_EXTRA_TRAFFIC=true
         mem_limit: 512m
         mem_reservation: 256m
         cpus: 0.1
@@ -124,8 +124,8 @@ services:
         environment:
             - CONTAINER_NAME=as161h-Ethereum-POW-01-Miner-10.161.0.71
             - SENDER_ACCOUNTS=0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19,0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A
-            - GEN_ETH_TRAFFIC=false
-            - GEN_EXTRA_TRAFFIC=false
+            - GEN_ETH_TRAFFIC=true
+            - GEN_EXTRA_TRAFFIC=true
         mem_limit: 512m
         mem_reservation: 256m
         cpus: 0.1
@@ -189,8 +189,8 @@ services:
         environment:
             - CONTAINER_NAME=as162h-Ethereum-POW-02-Miner-10.162.0.71
             - SENDER_ACCOUNTS=0x8c400205fDb103431F6aC7409655ad3cf8f6d007,0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe
-            - GEN_ETH_TRAFFIC=false
-            - GEN_EXTRA_TRAFFIC=false
+            - GEN_ETH_TRAFFIC=true
+            - GEN_EXTRA_TRAFFIC=true
         mem_limit: 512m
         mem_reservation: 256m
         cpus: 0.1
@@ -216,8 +216,8 @@ services:
             org.seedsecuritylabs.seedemu.meta.net.0.address: "10.162.0.74/24"
         environment:
             - CONTAINER_NAME=as162h-new_eth_node-10.162.0.74
-            - GEN_ETH_TRAFFIC=false
-            - GEN_EXTRA_TRAFFIC=false
+            - GEN_ETH_TRAFFIC=true
+            - GEN_EXTRA_TRAFFIC=true
         mem_limit: 512m
         mem_reservation: 256m
         cpus: 0.1

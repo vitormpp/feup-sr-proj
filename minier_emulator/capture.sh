@@ -8,7 +8,7 @@ LABEL="${1:-capture}"
 OUT_DIR="captures/${LABEL}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
 
-PROJECT="${COMPOSE_PROJECT_NAME:-mini_emulator}"
+PROJECT="${COMPOSE_PROJECT_NAME:-minier_emulator}"
 NETWORKS=(net_160_net0 net_161_net0 net_162_net0 net_ix_ix103)
 
 declare -a PIDS=()
