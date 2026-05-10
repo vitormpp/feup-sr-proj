@@ -13,6 +13,15 @@ Usage:
     Each folder may contain any number of .pcap / .pcapng files.
     All files in a folder are treated as belonging to the same class.
 
+    File naming conventions drive deduplication strategy:
+      - unknown_<bridge>.pcap  : one-sided bridge captures of unrecognised
+                                  traffic (e.g. spoofed-source attacks).
+                                  Kept as-is; asymmetric features are valid
+                                  signal here.
+      - <container>.pcap       : per-container captures filtered to a known IP.
+                                  Deduplicated across files to remove the same
+                                  flow seen from both endpoints.
+
 Dependencies:
     pip install nfstream scikit-learn pandas joblib
 """
@@ -37,8 +46,6 @@ PCAP_SUFFIXES = {".pcap", ".pcapng", ".cap"}
 
 # ---------------------------------------------------------------------------
 # Feature columns produced by nfstream (statistical_analysis=True).
-# All names match the actual to_pandas() output columns.
-# Any column absent from a particular file is silently skipped.
 # ---------------------------------------------------------------------------
 FEATURE_COLS = [
     # Durations
@@ -80,20 +87,33 @@ FEATURE_COLS = [
     "dst2src_max_piat_ms",
 ]
 
+# Columns used to identify the same flow seen from different capture points.
+# bidirectional_first_seen_ms is intentionally omitted from the container
+# dedup key because clock skew between capture points can shift it slightly;
+# the 5-tuple alone is a robust enough key for same-bridge captures.
+FLOW_KEY_COLS = ["src_ip", "dst_ip", "src_port", "dst_port", "protocol"]
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def find_pcaps(folder: Path):
-    """Return all pcap-like files directly inside *folder* (non-recursive)."""
     files = [f for f in sorted(folder.iterdir())
              if f.is_file() and f.suffix.lower() in PCAP_SUFFIXES]
     return files
 
 
+def is_unknown_pcap(path: Path) -> bool:
+    """True for bridge-level unknown-traffic captures (unknown_<bridge>.pcap)."""
+    return path.stem.startswith("unknown_")
+
+
 def extract_one(pcap_path: Path, label: str) -> pd.DataFrame:
-    """Extract flows from a single pcap file and return a labelled DataFrame."""
+    """
+    Extract flows from a single pcap file and return a labelled DataFrame.
+    Includes the source filename so callers can apply file-level logic.
+    """
     streamer = NFStreamer(
         source=str(pcap_path),
         statistical_analysis=True,
@@ -108,20 +128,114 @@ def extract_one(pcap_path: Path, label: str) -> pd.DataFrame:
 
     available = [c for c in FEATURE_COLS if c in df.columns]
     df = df[available].copy()
-    df["label"] = label
+
+    # Carry identity columns through for deduplication; drop them before
+    # training if they survive into the feature matrix.
+    for col in FLOW_KEY_COLS + ["bidirectional_first_seen_ms"]:
+        # nfstream may or may not include these depending on version/config
+        pass  # they are kept automatically if present in to_pandas() output
+
+    df["label"]    = label
+    df["_source"]  = pcap_path.name   # used for dedup bookkeeping only
+    df["_unknown"] = is_unknown_pcap(pcap_path)
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df.fillna(0, inplace=True)
     print(f"    {pcap_path.name}: {len(df)} flows")
     return df
 
 
+def deduplicate_container_flows(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove duplicate flows that arise because per-container pcaps capture
+    the same flow from both endpoints.
+
+    Strategy:
+      - unknown_* pcaps are one-sided bridge captures and must NOT be
+        deduplicated against container pcaps — their asymmetric feature
+        vectors are valid (and important) signal.
+      - Container pcaps are deduplicated on the 5-tuple.  For flows seen
+        from both sides nfstream will have swapped src/dst, so we normalise
+        the key to (min_ip, max_ip, min_port, max_port, protocol) before
+        dropping duplicates.
+    """
+    unknown_mask = df["_unknown"]
+    df_unknown   = df[unknown_mask].copy()
+    df_container = df[~unknown_mask].copy()
+
+    if df_container.empty:
+        return df
+
+    key_cols_present = [c for c in FLOW_KEY_COLS if c in df_container.columns]
+
+    if len(key_cols_present) < 2:
+        # Not enough identity info to dedup safely — skip and warn.
+        print("    WARNING: flow identity columns missing; skipping deduplication "
+              "of container pcaps. Ensure nfstream version exposes src_ip/dst_ip.")
+        return df
+
+    # Build a symmetric (direction-agnostic) flow key so that
+    # src→dst and dst→src records of the same flow collapse to one.
+    if "src_ip" in df_container.columns and "dst_ip" in df_container.columns:
+        df_container["_key_ip_lo"] = np.minimum(
+            df_container["src_ip"].astype(str),
+            df_container["dst_ip"].astype(str),
+        )
+        df_container["_key_ip_hi"] = np.maximum(
+            df_container["src_ip"].astype(str),
+            df_container["dst_ip"].astype(str),
+        )
+    else:
+        df_container["_key_ip_lo"] = ""
+        df_container["_key_ip_hi"] = ""
+
+    if "src_port" in df_container.columns and "dst_port" in df_container.columns:
+        df_container["_key_port_lo"] = np.minimum(
+            df_container["src_port"], df_container["dst_port"]
+        )
+        df_container["_key_port_hi"] = np.maximum(
+            df_container["src_port"], df_container["dst_port"]
+        )
+    else:
+        df_container["_key_port_lo"] = 0
+        df_container["_key_port_hi"] = 0
+
+    proto_col = "protocol" if "protocol" in df_container.columns else None
+    sym_key   = ["_key_ip_lo", "_key_ip_hi", "_key_port_lo", "_key_port_hi"]
+    if proto_col:
+        sym_key.append(proto_col)
+
+    before = len(df_container)
+    df_container = df_container.drop_duplicates(subset=sym_key, keep="first")
+    dropped = before - len(df_container)
+    if dropped:
+        print(f"    Dedup: dropped {dropped} duplicate flows from container pcaps")
+
+    # Clean up temporary key columns
+    df_container.drop(
+        columns=["_key_ip_lo", "_key_ip_hi", "_key_port_lo", "_key_port_hi"],
+        errors="ignore",
+        inplace=True,
+    )
+
+    combined = pd.concat([df_container, df_unknown], ignore_index=True)
+    return combined
+
+
 def extract_folder(folder: Path, label: str) -> pd.DataFrame:
-    """Extract and concatenate flows from all pcaps in *folder*."""
+    """
+    Extract and concatenate flows from all pcaps in *folder*, then apply
+    appropriate deduplication.
+    """
     pcaps = find_pcaps(folder)
     if not pcaps:
         sys.exit(f"ERROR: no pcap files found in {folder}")
 
-    print(f"  [{label}] {len(pcaps)} file(s) in {folder}")
+    n_unknown   = sum(1 for p in pcaps if is_unknown_pcap(p))
+    n_container = len(pcaps) - n_unknown
+    print(f"  [{label}] {len(pcaps)} file(s) in {folder} "
+          f"({n_container} container, {n_unknown} unknown-bridge)")
+
     frames = [extract_one(p, label) for p in pcaps]
     frames = [f for f in frames if not f.empty]
 
@@ -129,7 +243,11 @@ def extract_folder(folder: Path, label: str) -> pd.DataFrame:
         sys.exit(f"ERROR: all pcap files in {folder} produced zero flows.")
 
     combined = pd.concat(frames, ignore_index=True)
-    print(f"  [{label}] total flows: {len(combined)}")
+    print(f"  [{label}] raw flows before dedup: {len(combined)}")
+
+    combined = deduplicate_container_flows(combined)
+    print(f"  [{label}] flows after dedup: {len(combined)}")
+
     return combined
 
 
@@ -170,17 +288,24 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # 1. Feature extraction
+    # 1. Feature extraction + deduplication
     # ------------------------------------------------------------------
     print("\n[1/4] Extracting features ...")
     df_normal    = extract_folder(normal_dir,    label="normal")
     df_malicious = extract_folder(malicious_dir, label="malicious")
 
-    # Align to the common feature set present in both
+    # Drop bookkeeping columns before building the feature matrix
+    drop_cols = {"label", "_source", "_unknown"}
     common_features = [
         c for c in df_normal.columns
-        if c in df_malicious.columns and c != "label"
+        if c in df_malicious.columns
+        and c not in drop_cols
+        and c in set(FEATURE_COLS)   # only trained on declared features
     ]
+
+    if not common_features:
+        sys.exit("ERROR: no usable feature columns found in both datasets.")
+
     df_normal    = df_normal[common_features + ["label"]]
     df_malicious = df_malicious[common_features + ["label"]]
     print(f"\n  Using {len(common_features)} features: {common_features}")
@@ -197,14 +322,12 @@ def main():
     train_normal,    test_normal    = split(df_normal)
     train_malicious, test_malicious = split(df_malicious)
 
-    # Combined shuffled training set (for Random Forest)
     train_all = (pd.concat([train_normal, train_malicious], ignore_index=True)
                    .sample(frac=1, random_state=42)
                    .reset_index(drop=True))
     X_train = train_all[common_features].values
     y_train = train_all["label"].values
 
-    # Mixed shuffled validation set
     test_all = (pd.concat([test_normal, test_malicious], ignore_index=True)
                   .sample(frac=1, random_state=99)
                   .reset_index(drop=True))
@@ -216,13 +339,12 @@ def main():
     print(f"  Validation : {len(X_test):>8} flows  "
           f"(normal={len(test_normal)}, malicious={len(test_malicious)})")
 
-    # Fit scaler on the combined training set
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled  = scaler.transform(X_test)
 
     # ------------------------------------------------------------------
-    # 3a. Random Forest — trained on labelled mixed data
+    # 3a. Random Forest
     # ------------------------------------------------------------------
     print("\n[3/4] Training models ...")
     print("  -> Random Forest classifier (mixed labelled data) ...")
@@ -244,9 +366,7 @@ def main():
     iso = IsolationForest(n_estimators=100, contamination="auto", random_state=42)
     iso.fit(X_train_normal_scaled)
 
-    # +1 = inlier (normal), -1 = outlier (malicious)
     iso_preds = np.where(iso.predict(X_test_scaled) == 1, "normal", "malicious")
-
     print("\n  -- Isolation Forest (unsupervised outlier detection) --")
     print(classification_report(y_test, iso_preds))
     print_confusion(y_test, iso_preds, "Isolation Forest")

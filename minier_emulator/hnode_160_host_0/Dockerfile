@@ -15,5 +15,6 @@ COPY d2cdff8371aa6af79bb63954a87ac69f /tmp/eth-password
 COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
 RUN pip3 install 'web3>=6,<7'
+RUN pip3 install nfstream scikit-learn joblib
 CMD ["/start.sh"]
 

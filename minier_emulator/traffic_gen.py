@@ -40,6 +40,22 @@ ALL_HOSTS = [
     "10.162.0.71", "10.162.0.72", "10.162.0.73", "10.162.0.74",  # AS 162
 ]
 
+# Internal emulator hostnames — used in DNS queries so no external name leaks out.
+# Each maps to a real IP in ALL_HOSTS so fabricated DNS responses stay on-topology.
+_HOST_NAMES = {
+    "as160-host1.internal": "10.160.0.71",
+    "as160-host2.internal": "10.160.0.72",
+    "as160-host3.internal": "10.160.0.73",
+    "as161-host1.internal": "10.161.0.71",
+    "as161-host2.internal": "10.161.0.72",
+    "as161-host3.internal": "10.161.0.73",
+    "as162-host1.internal": "10.162.0.71",
+    "as162-host2.internal": "10.162.0.72",
+    "as162-host3.internal": "10.162.0.73",
+    "as162-host4.internal": "10.162.0.74",
+}
+_DOMAINS = list(_HOST_NAMES.keys())
+
 # Protocol selection weights (no SSH)
 PROTOCOLS = ["http", "dns", "telnet", "icmp"]
 WEIGHTS   = [  45,    25,     15,      15  ]
@@ -76,22 +92,29 @@ def _get_local_ips():
 
 
 def _pick_target(local_ips):
-    """Choose a random remote host IP."""
+    """Choose a random remote host IP, always from the known topology."""
     targets = os.environ.get("TRAFFIC_TARGETS", "")
-    pool = [a.strip() for a in targets.split(",") if a.strip()] if targets else ALL_HOSTS
+    if targets:
+        # Validate any env-supplied IPs against ALL_HOSTS to avoid escaping
+        # the topology accidentally.
+        pool = [
+            a.strip() for a in targets.split(",")
+            if a.strip() in ALL_HOSTS
+        ]
+        if not pool:
+            log.warning(
+                "TRAFFIC_TARGETS contained no IPs in ALL_HOSTS — falling back to full topology."
+            )
+            pool = ALL_HOSTS
+    else:
+        pool = ALL_HOSTS
+
     remote = [ip for ip in pool if ip not in local_ips]
     return random.choice(remote) if remote else None
 
 # ---------------------------------------------------------------------------
 # DNS helpers  (build / parse minimal DNS packets)
 # ---------------------------------------------------------------------------
-
-_DOMAINS = [
-    "example.com", "google.com", "github.com", "wikipedia.org",
-    "stackoverflow.com", "python.org", "reddit.com", "amazon.com",
-    "cloudflare.com", "mozilla.org", "linux.org", "kernel.org",
-    "arxiv.org", "ieee.org", "debian.org", "ubuntu.com",
-]
 
 
 def _build_dns_query(domain):
@@ -107,20 +130,54 @@ def _build_dns_query(domain):
     return tx_id, header + question
 
 
+def _extract_query_name(query_data):
+    """
+    Parse the QNAME from a raw DNS query packet.
+    Returns the domain string, or None on parse failure.
+    """
+    if len(query_data) < 13:
+        return None
+    offset = 12  # skip the 12-byte header
+    labels = []
+    while offset < len(query_data):
+        length = query_data[offset]
+        if length == 0:
+            break
+        offset += 1
+        if offset + length > len(query_data):
+            return None
+        labels.append(query_data[offset:offset + length].decode(errors="replace"))
+        offset += length
+    return ".".join(labels) if labels else None
+
+
 def _build_dns_response(query_data):
-    """Given raw query bytes, craft a synthetic A-record response."""
+    """
+    Given raw query bytes, craft a synthetic A-record response whose answer IP
+    is always a real host in ALL_HOSTS (never a random external address).
+    """
     if len(query_data) < 12:
         return None
+
     tx_id = query_data[:2]
     flags = struct.pack("!H", 0x8180)  # standard response, no error
     counts = struct.pack("!HHHH", 1, 1, 0, 0)
     question = query_data[12:]  # qname + qtype + qclass
+
+    # Resolve to a known internal IP if we recognise the name; otherwise
+    # pick any host in ALL_HOSTS — never generate a random external address.
+    queried_name = _extract_query_name(query_data)
+    if queried_name and queried_name in _HOST_NAMES:
+        answer_ip = _HOST_NAMES[queried_name]
+    else:
+        answer_ip = random.choice(ALL_HOSTS)
+
     # answer: pointer to name in question (0xC00C), A record, IN, TTL 300, 4-byte IP
     answer = (
         b"\xc0\x0c"
         + struct.pack("!HHI", 1, 1, 300)
         + struct.pack("!H", 4)
-        + socket.inet_aton(f"10.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}")
+        + socket.inet_aton(answer_ip)
     )
     return tx_id + flags + counts + question + answer
 
@@ -334,7 +391,7 @@ def http_client(target):
 
 
 def dns_client(target):
-    """Send a DNS A-record query to target:53."""
+    """Send a DNS A-record query for an internal emulator hostname to target:53."""
     domain = random.choice(_DOMAINS)
     tx_id, packet = _build_dns_query(domain)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

@@ -14,5 +14,6 @@ COPY c47d926f4d91bfbced75f81e9349df62 /tmp/keystore/UTC--2026-04-12T17-51-34.804
 COPY d2cdff8371aa6af79bb63954a87ac69f /tmp/eth-password
 COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
+RUN pip3 install nfstream scikit-learn joblib
 CMD ["/start.sh"]
 
