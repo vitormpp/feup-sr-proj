@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Eclipse Attack & Double Spend: Full Automation Script
+ARP Eclipse Attack & Double Spend: Full Automation Script
 Private Ethereum PoW Emulator
 
 Topology:
