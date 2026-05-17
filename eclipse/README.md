@@ -9,42 +9,10 @@ This guide demonstrates how to successfully execute an Eclipse Attack on a priva
 
 ---
 
-## Phase 0: Network Preparation (Start the Engines)
-
-Before launching the attack, the entire network must be healthy, communicating, and actively mining blocks. We need to assign an "Etherbase" (a wallet to receive mining rewards) and start exactly one mining thread on each node.
-
-**Run these commands on the Host VM:**
-
-**1. Start Node 161 (Real World Miner)**
-```bash
-docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.stop()"
-docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.setEtherbase(eth.accounts)"
-docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.start(1)"
-docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "eth.mining"
-```
-> **Expected Output:** `true`, `true`, `null`, `true`
-
-**2. Start Node 160 (BootNode Miner)**
-```bash
-docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.stop()"
-docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.setEtherbase(eth.accounts)"
-docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.start(1)"
-```
-
-**3. Start Node 162 (The Victim)**
-```bash
-docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.stop()"
-docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.setEtherbase(eth.accounts)"
-docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.start(1)"
-docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth.mining"
-```
-
-*Wait a few minutes for the Ethash DAG to generate. Verify blocks are increasing before proceeding.*
-
----
-
 ## Phase 1: The Eclipse Attack (Isolation)
 
+> **Important Pre-Attack Check:** Before launching the attack, ensure that all nodes are actively mining and that block heights are increasing globally. You can verify this using the **Check Current Block Heights** diagnostic block in the [Appendix](#engine-initialization--mining-management). Run it a few times to confirm the block numbers are rising before proceeding.
+> 
 We will use the Attacker Node (`.74`) to intercept and drop all peer-to-peer communication to and from the Victim Node (`.71`), trapping it in its own isolated reality.
 
 * **How the script works:** [`arp_spoof.py`](arp_spoof.py) executes a Man-in-the-Middle (MitM) attack. It tricks the victim node into thinking the attacker's MAC address belongs to the gateway router, and tricks the router into thinking the attacker is the victim node. This forces all traffic to route through the attacker's machine.
@@ -162,6 +130,43 @@ The Double Spend is complete. The attacker kept their money (sent to Bob) and th
 
 ## Appendix: Helper Commands
 
+
+### Engine Initialization & Mining Management
+
+**1. Node 160 (BootNode Miner)**
+
+```bash
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.stop()"
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.setEtherbase(eth.accounts[0])"
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "miner.start(1)"
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "eth.mining"
+
+```
+
+**2. Node 161 (Real World Miner)**
+
+```bash
+docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.stop()"
+docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.setEtherbase(eth.accounts[0])"
+docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "miner.start(1)"
+docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "eth.mining"
+
+```
+
+**3. Node 162 (The Victim)**
+
+```bash
+docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.stop()"
+docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.setEtherbase(eth.accounts[0])"
+docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "miner.start(1)"
+docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth.mining"
+
+```
+
+---
+
+### Diagnostics
+
 **Check Current Block Heights:**
 ```bash
 docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "eth.blockNumber"
@@ -174,4 +179,9 @@ docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth
 docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "eth.accounts"
 docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "eth.accounts"
 docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth.accounts"
+```
+
+**Check pending transactions:**
+```bash
+docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "txpool.status"
 ```
