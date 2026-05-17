@@ -1,6 +1,6 @@
 # Ethereum Proof-of-Work: Eclipse Attack & Double Spend Guide
 
-This guide demonstrates how to successfully execute an Eclipse Attack on a private Ethereum Proof-of-Work (PoW) network, followed by a Double Spend exploit. 
+This guide demonstrates the execution of an Eclipse Attack on a private Ethereum Proof-of-Work (PoW) network, followed by a Double Spend exploit.
 
 ### Network Architecture
 * **The Real World (Main Chain):** AS 160 (`.71` BootNode Miner) and AS 161 (`.71` Miner)
@@ -11,7 +11,9 @@ This guide demonstrates how to successfully execute an Eclipse Attack on a priva
 
 ## Phase 1: The Eclipse Attack (Isolation)
 
-> **Important Pre-Attack Check:** Before launching the attack, ensure that all nodes are actively mining and that block heights are increasing globally. You can verify this using the **Check Current Block Heights** diagnostic block in the [Appendix](#engine-initialization--mining-management). Run it a few times to confirm the block numbers are rising before proceeding.
+> **Automation Alternative:** To run the automated script instead of entering the step-by-step terminal commands below, initialize the environment with `docker-compose up -d` (or `dcup`) and execute [`python3 eclipse_attack.py`](eclipse_attack.py) from the Host VM.
+
+> **Important Pre-Attack Check:** Before launching the attack, ensure that all nodes are actively mining and that block heights are increasing globally. This can be verified using the **Check Current Block Heights** diagnostic block in the [Appendix](#engine-initialization--mining-management). Run it a few times to confirm the block numbers are rising before proceeding.
 > 
 We will use the Attacker Node (`.74`) to intercept and drop all peer-to-peer communication to and from the Victim Node (`.71`), trapping it in its own isolated reality.
 
@@ -173,7 +175,10 @@ docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --
 docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "eth.blockNumber"
 docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth.blockNumber"
 ```
-
+**Check Who Mined the Latest Blocks:**
+```bash
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec 'var latest = eth.blockNumber; for (var i = latest; i > latest - 5; i--) { var b = eth.getBlock(i); console.log("Block #" + i + " Miner: " + b.miner); }'
+```
 **Find the Local Mining Accounts:**
 ```bash
 docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "eth.accounts"
@@ -181,7 +186,9 @@ docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "eth
 docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "eth.accounts"
 ```
 
-**Check pending transactions:**
+**Check Pending Transactions:**
 ```bash
+docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "txpool.status"
+docker exec -it as161h-Ethereum-POW-01-Miner-10.161.0.71 geth attach --exec "txpool.status"
 docker exec -it as162h-Ethereum-POW-02-Miner-10.162.0.71 geth attach --exec "txpool.status"
 ```
