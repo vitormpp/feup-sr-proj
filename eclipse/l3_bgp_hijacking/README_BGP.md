@@ -11,6 +11,8 @@ This module executes a global routing infrastructure attack to isolate the victi
 
 ## Phase 1: The Eclipse Attack (BGP Hijacking)
 
+> **Automation Alternative:** To execute the automated attack sequence instead of entering the step-by-step terminal commands below, ensure your environment is initialized (`docker-compose up -d`) and run [`python3 bgp_eclipse_attack.py`](bgp_eclipse_attack.py) from the Host VM.
+
 > **Important Pre-Attack Check:** Before launching the attack, ensure that all nodes are actively mining and that block heights are increasing globally. This can be verified using the **Check Current Block Heights** diagnostic block in the [Master Guide Appendix](../README.md#diagnostics). Execute it sequentially to confirm the block numbers are rising before proceeding.
 > 
 We will utilize the AS161 Border Router (`.254`) to announce a rogue BGP route to the global Internet Exchange (IX). By falsely claiming ownership of AS162's IP subnet, we will manipulate AS160 into routing all traffic destined for the Victim directly into our attacker network, where it will be dropped into a black hole.

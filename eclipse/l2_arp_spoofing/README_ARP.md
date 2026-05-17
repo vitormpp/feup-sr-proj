@@ -4,7 +4,7 @@ This module executes a localized Man-in-the-Middle (MitM) attack to isolate the 
 
 ## Phase 1: The Eclipse Attack (Isolation)
 
-> **Automation Alternative:** To execute the automated attack sequence instead of entering the step-by-step terminal commands below, ensure your environment is initialized (`docker-compose up -d`) and run [`python3 eclipse_attack.py`](eclipse_attack.py) from the Host VM.
+> **Automation Alternative:** To execute the automated attack sequence instead of entering the step-by-step terminal commands below, ensure your environment is initialized (`docker-compose up -d`) and run [`python3 arp_eclipse_attack.py`](arp_eclipse_attack.py) from the Host VM.
 
 > **Important Pre-Attack Check:** Before launching the attack, ensure that all nodes are actively mining and that block heights are increasing globally. This can be verified using the **Check Current Block Heights** diagnostic block in the [Master README Appendix](../README.md#diagnostics). Execute it sequentially to confirm the block numbers are rising before proceeding.
 
