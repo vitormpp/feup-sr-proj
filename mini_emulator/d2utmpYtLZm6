@@ -4,17 +4,11 @@ services:
         build:
             context: ./new_eth_node
         image: new_ethereum_node
-        cpus: 0.5
-        mem_limit: 512m
-        mem_reservation: 128m
     707ec7fa5d3740bf02573cbd0b37e6ea:
         build:
             context: .
             dockerfile: dummies/707ec7fa5d3740bf02573cbd0b37e6ea
         image: 707ec7fa5d3740bf02573cbd0b37e6ea
-        cpus: 0.2
-        mem_limit: 512m
-        mem_reservation: 128m
         depends_on:
             - new_ethereum_node
 
@@ -23,27 +17,18 @@ services:
             context: .
             dockerfile: dummies/98a2693c996c2294358552f48373498d
         image: 98a2693c996c2294358552f48373498d
-        cpus: 0.2
-        mem_limit: 512m
-        mem_reservation: 128m
 
     39e016aa9e819f203ebc1809245a5818:
         build:
             context: .
             dockerfile: dummies/39e016aa9e819f203ebc1809245a5818
         image: 39e016aa9e819f203ebc1809245a5818
-        cpus: 0.2
-        mem_limit: 512m
-        mem_reservation: 128m
 
     24e044b795288bc851bbf81da183e7a9:
         build:
             context: .
             dockerfile: dummies/24e044b795288bc851bbf81da183e7a9
         image: 24e044b795288bc851bbf81da183e7a9
-        cpus: 0.2
-        mem_limit: 512m
-        mem_reservation: 128m
 
 
     hnode_160_host_0:
@@ -55,14 +40,12 @@ services:
             - ALL
 
         privileged: true
-        cpus: 1.0
         networks:
             net_160_net0:
                 ipv4_address: 10.160.0.71
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
-            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
@@ -82,6 +65,10 @@ services:
             - CONTAINER_NAME=as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71
             - SENDER_ACCOUNTS=0x1be9288F9a7D2F809250f15c487E3a5A9Cf71f4F,0xA403f63AD02a557D5DDCBD5F5af9A7627C591034
 
+        mem_limit: 512m
+        mem_reservation: 256m
+        cpus: 0.5
+
     hnode_160_host_1:
         build: ./hnode_160_host_1
         container_name: as160h-host_1-10.160.0.72
@@ -95,9 +82,6 @@ services:
             net_160_net0:
                 ipv4_address: 10.160.0.72
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
@@ -109,9 +93,9 @@ services:
         environment:
             - CONTAINER_NAME=as160h-host_1-10.160.0.72
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_160_host_2:
@@ -127,9 +111,6 @@ services:
             net_160_net0:
                 ipv4_address: 10.160.0.73
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
@@ -141,9 +122,9 @@ services:
         environment:
             - CONTAINER_NAME=as160h-host_2-10.160.0.73
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     brdnode_160_router0:
@@ -176,10 +157,9 @@ services:
         environment:
             - CONTAINER_NAME=as160brd-router0-10.160.0.254
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_161_host_0:
@@ -191,14 +171,12 @@ services:
             - ALL
 
         privileged: true
-        cpus: 1.0
         networks:
             net_161_net0:
                 ipv4_address: 10.161.0.71
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
-            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
@@ -218,6 +196,9 @@ services:
             - CONTAINER_NAME=as161h-Ethereum-POW-01-Miner-10.161.0.71
             - SENDER_ACCOUNTS=0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19,0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A
 
+        mem_limit: 512m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_161_host_1:
@@ -233,9 +214,6 @@ services:
             net_161_net0:
                 ipv4_address: 10.161.0.72
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
@@ -247,10 +225,9 @@ services:
         environment:
             - CONTAINER_NAME=as161h-host_1-10.161.0.72
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_161_host_2:
@@ -266,9 +243,6 @@ services:
             net_161_net0:
                 ipv4_address: 10.161.0.73
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
@@ -280,10 +254,9 @@ services:
         environment:
             - CONTAINER_NAME=as161h-host_2-10.161.0.73
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     brdnode_161_router0:
@@ -316,10 +289,9 @@ services:
         environment:
             - CONTAINER_NAME=as161brd-router0-10.161.0.254
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_162_host_0:
@@ -331,14 +303,12 @@ services:
             - ALL
 
         privileged: true
-        cpus: 1.0
         networks:
             net_162_net0:
                 ipv4_address: 10.162.0.71
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
-            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -358,6 +328,9 @@ services:
             - CONTAINER_NAME=as162h-Ethereum-POW-02-Miner-10.162.0.71
             - SENDER_ACCOUNTS=0x8c400205fDb103431F6aC7409655ad3cf8f6d007,0x9105A373ce1d01B517aA54205A5E4c70FA9f34Fe
 
+        mem_limit: 512m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_162_host_1:
@@ -373,9 +346,6 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.72
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -387,10 +357,9 @@ services:
         environment:
             - CONTAINER_NAME=as162h-host_1-10.162.0.72
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_162_host_2:
@@ -406,9 +375,6 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.73
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -420,10 +386,9 @@ services:
         environment:
             - CONTAINER_NAME=as162h-host_2-10.162.0.73
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     hnode_162_new_eth_node:
@@ -439,9 +404,6 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.74
 
-        volumes:
-            - ./traffic_gen.py:/traffic_gen.py:ro
-
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -453,10 +415,9 @@ services:
         environment:
             - CONTAINER_NAME=as162h-new_eth_node-10.162.0.74
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     brdnode_162_router0:
@@ -489,10 +450,9 @@ services:
         environment:
             - CONTAINER_NAME=as162brd-router0-10.162.0.254
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
-
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     rs_ix_ix103:
@@ -519,9 +479,9 @@ services:
         environment:
             - CONTAINER_NAME=as103brd-ix103-10.103.0.103
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     seedemu-ether-client:
@@ -532,9 +492,9 @@ services:
         ports:
             - 5000:5000/tcp
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
     seedemu_internet_map:
@@ -546,9 +506,9 @@ services:
         ports:
             - 8080:8080/tcp
 
-        cpus: 0.5
         mem_limit: 512m
-        mem_reservation: 128m
+        mem_reservation: 256m
+        cpus: 0.5
 
 
 networks:
