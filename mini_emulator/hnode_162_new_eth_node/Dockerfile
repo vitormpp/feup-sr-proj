@@ -12,6 +12,11 @@ COPY e01e36443f9f72c6204189260d0bd276 /ifinfo.txt
 COPY d3d51fdf7f4bad30dc5db560a01ce629 /interface_setup
 COPY attacks.py /attacks.py
 COPY synflood /synflood
-RUN apt-get update && apt-get install -y cpulimit && rm -rf /var/lib/apt/lists/*
+# Eclipse ARP attack dependencies
+COPY arp_spoof.py /arp_spoof.py
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cpulimit \
+        iptables \
+        python3-scapy \
+    && rm -rf /var/lib/apt/lists/*
 CMD ["/start.sh"]
-
