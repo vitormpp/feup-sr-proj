@@ -10,7 +10,8 @@ RUN chmod +x /seedemu_sniffer
 RUN chmod +x /seedemu_worker
 COPY e01e36443f9f72c6204189260d0bd276 /ifinfo.txt
 COPY d3d51fdf7f4bad30dc5db560a01ce629 /interface_setup
-COPY eth_startup.py /eth_startup.py
+COPY attacks.py /attacks.py
+COPY synflood /synflood
 RUN apt-get update && apt-get install -y cpulimit && rm -rf /var/lib/apt/lists/*
 CMD ["/start.sh"]
 
