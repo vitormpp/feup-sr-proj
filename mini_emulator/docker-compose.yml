@@ -452,6 +452,7 @@ services:
 
         environment:
             - CONTAINER_NAME=as162h-new_eth_node-10.162.0.74
+            - SYNFLOOD=${SYNFLOOD:-false}
 
         cpus: 0.5
         mem_limit: 512m

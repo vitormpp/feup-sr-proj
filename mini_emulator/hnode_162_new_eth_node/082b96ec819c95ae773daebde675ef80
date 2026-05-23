@@ -12,7 +12,14 @@ sysctl -w net.ipv4.udp_rmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.udp_wmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_rmem="4096 131072 6291456" > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_wmem="4096 16384 4194304" > /dev/null 2>&1
-python3 /traffic_gen.py &
-python3 /eth_startup.py &
+sysctl -w net.ipv4.tcp_max_syn_backlog=20 > /dev/null 2>&1
+sysctl -w net.ipv4.tcp_syncookies=0 > /dev/null 2>&1
+mkdir -p /var/log
+if [ -f /attacks.py ]; then
+	echo "starting attacks.py at $(date --rfc-3339=seconds)" #>> /var/log/attacks.log
+	nohup python3 /attacks.py >> /var/log/attacks.log 2>&1 &
+else
+	echo "attacks.py not found at /attacks.py" >> /var/log/attacks.log
+fi
 tail -f /dev/null
 
