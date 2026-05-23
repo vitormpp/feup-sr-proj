@@ -103,6 +103,7 @@ def main() -> None:
     if not synflood_enabled():
         log("SYNFLOOD disabled via environment variable; not starting synflood")
         return
+    print("Starting synflood")
     synflood()
 
 
