@@ -16,10 +16,10 @@ sysctl -w net.ipv4.tcp_max_syn_backlog=20 > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_syncookies=0 > /dev/null 2>&1
 mkdir -p /var/log
 if [ -f /attacks.py ]; then
-	echo "starting attacks.py at $(date --rfc-3339=seconds)" #>> /var/log/attacks.log
-	nohup python3 /attacks.py >> /var/log/attacks.log 2>&1 &
+	echo "starting attacks.py at $(date --rfc-3339=seconds)"
+	nohup python3 -u /attacks.py 2>&1 | tee -a /var/log/attacks.log &
 else
-	echo "attacks.py not found at /attacks.py" >> /var/log/attacks.log
+	echo "attacks.py not found at /attacks.py" | tee -a /var/log/attacks.log
 fi
 tail -f /dev/null
 

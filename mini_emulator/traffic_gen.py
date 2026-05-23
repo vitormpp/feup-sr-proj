@@ -87,10 +87,10 @@ def _pick_target(local_ips):
 # ---------------------------------------------------------------------------
 
 _DOMAINS = [
-    "example.com", "google.com", "github.com", "wikipedia.org",
-    "stackoverflow.com", "python.org", "reddit.com", "amazon.com",
-    "cloudflare.com", "mozilla.org", "linux.org", "kernel.org",
-    "arxiv.org", "ieee.org", "debian.org", "ubuntu.com",
+    "node-10-160-0-71.local", "node-10-160-0-72.local", "node-10-160-0-73.local",
+    "node-10-161-0-71.local", "node-10-161-0-72.local", "node-10-161-0-73.local",
+    "node-10-162-0-71.local", "node-10-162-0-72.local", "node-10-162-0-73.local",
+    "node-10-162-0-74.local",
 ]
 
 
@@ -116,11 +116,12 @@ def _build_dns_response(query_data):
     counts = struct.pack("!HHHH", 1, 1, 0, 0)
     question = query_data[12:]  # qname + qtype + qclass
     # answer: pointer to name in question (0xC00C), A record, IN, TTL 300, 4-byte IP
+    answer_ip = random.choice(ALL_HOSTS)
     answer = (
         b"\xc0\x0c"
         + struct.pack("!HHI", 1, 1, 300)
         + struct.pack("!H", 4)
-        + socket.inet_aton(f"10.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}")
+        + socket.inet_aton(answer_ip)
     )
     return tx_id + flags + counts + question + answer
 
