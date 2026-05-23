@@ -1,3 +1,6 @@
 emulator_code/
 mini_emulator/captures/
 mini_emulator/captures_zeek/
+*training_run*
+venv/
+venvcd/

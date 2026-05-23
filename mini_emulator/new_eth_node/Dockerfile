@@ -10,5 +10,4 @@ RUN apt-get update && apt-get install -y \
     net-tools \
     nano
 
-# Install the web3 library for the Python scripts
-RUN pip3 install web3 scapy
+
