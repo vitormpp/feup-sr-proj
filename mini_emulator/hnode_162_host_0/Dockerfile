@@ -16,5 +16,14 @@ COPY 0bf749f51915d190035e14f6afa9a371 /tmp/eth-nodes
 COPY 427fecb1e0b6c8dc8f669b5b71b8db71 /tmp/eth-bootstrapper
 RUN pip3 install 'web3>=6,<7'
 RUN apt-get update && apt-get install -y cpulimit && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates wget tar && rm -rf /var/lib/apt/lists/*
+RUN wget -qO /tmp/geth.tar.gz https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.10.21-67109427.tar.gz && \
+	mkdir -p /tmp/geth-install && \
+	tar -xzf /tmp/geth.tar.gz -C /tmp/geth-install && \
+	find /tmp/geth-install -name geth -type f -exec cp {} /usr/local/bin/geth \; && \
+	chmod +x /usr/local/bin/geth && \
+	rm -rf /tmp/geth.tar.gz /tmp/geth-install && \
+	geth version
+RUN mkdir -p /root/.ethash && geth makedag 0 /root/.ethash 2>&1 | tail -5
 CMD ["/start.sh"]
 
