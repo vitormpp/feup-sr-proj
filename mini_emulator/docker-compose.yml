@@ -62,6 +62,7 @@ services:
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
@@ -94,6 +95,9 @@ services:
             net_160_net0:
                 ipv4_address: 10.160.0.72
 
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
+
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "160"
@@ -122,6 +126,9 @@ services:
         networks:
             net_160_net0:
                 ipv4_address: 10.160.0.73
+
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
 
         labels:
@@ -191,6 +198,7 @@ services:
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
@@ -225,6 +233,9 @@ services:
             net_161_net0:
                 ipv4_address: 10.161.0.72
 
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
+
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "161"
@@ -254,6 +265,9 @@ services:
         networks:
             net_161_net0:
                 ipv4_address: 10.161.0.73
+
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
 
         labels:
@@ -324,6 +338,7 @@ services:
 
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -358,6 +373,9 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.72
 
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
+
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -388,6 +406,9 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.73
 
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
+
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"
@@ -417,6 +438,9 @@ services:
         networks:
             net_162_net0:
                 ipv4_address: 10.162.0.74
+
+        volumes:
+            - ./traffic_gen.py:/traffic_gen.py:ro
 
 
         labels:
