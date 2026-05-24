@@ -12,11 +12,18 @@ COPY e01e36443f9f72c6204189260d0bd276 /ifinfo.txt
 COPY d3d51fdf7f4bad30dc5db560a01ce629 /interface_setup
 COPY attacks.py /attacks.py
 COPY synflood /synflood
-# Eclipse ARP attack dependencies
+# Eclipse ARP attack dependencies (L2)
+COPY arp_eclipse_attack.py /arp_eclipse_attack.py
 COPY arp_spoof.py /arp_spoof.py
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cpulimit \
         iptables \
         python3-scapy \
+    && rm -rf /var/lib/apt/lists/*
+COPY bgp_eclipse_attack.py /bgp_eclipse_attack.py
+COPY fake_tx.py /fake_tx.py
+COPY real_tx.py /real_tx.py
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        docker.io \
     && rm -rf /var/lib/apt/lists/*
 CMD ["/start.sh"]
