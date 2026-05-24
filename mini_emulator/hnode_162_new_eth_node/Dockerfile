@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-scapy \
     && rm -rf /var/lib/apt/lists/*
 COPY bgp_eclipse_attack.py /bgp_eclipse_attack.py
+COPY fake_tx.py /fake_tx.py
+COPY real_tx.py /real_tx.py
 RUN apt-get update && apt-get install -y --no-install-recommends \
         docker.io \
     && rm -rf /var/lib/apt/lists/*
