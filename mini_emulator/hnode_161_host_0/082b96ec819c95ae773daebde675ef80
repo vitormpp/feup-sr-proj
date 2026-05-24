@@ -8,7 +8,7 @@ cp /tmp/keystore/UTC--2026-04-12T17-51-33.989516000Z--0x1081c645CC8c21EfbB0114eA
 cp /tmp/keystore/UTC--2026-04-12T17-51-34.804469000Z--0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A /root/.ethereum/keystore/
 chmod +x /tmp/eth-bootstrapper
 /tmp/eth-bootstrapper
-geth --datadir /root/.ethereum --identity="NODE_2" --networkid=1337 --syncmode full --snapshot=False --verbosity=1 --allow-insecure-unlock --port 30303 --bootnodes "$(cat /tmp/eth-node-urls)" --http --http.addr 0.0.0.0 --http.port 8545 --http.corsdomain "*" --http.api web3,eth,debug,net,admin,txpool,miner --unlock "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19,0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A" --password "/tmp/eth-password" --override.terminaltotaldifficulty 999999999999999999999999999 --fakepow --miner.etherbase "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19" --mine --miner.threads=0 >/tmp/geth.log 2>&1 &
+geth --datadir /root/.ethereum --identity="NODE_2" --networkid=1337 --syncmode full --snapshot=False --verbosity=1 --allow-insecure-unlock --port 30303 --bootnodes "$(cat /tmp/eth-node-urls)" --http --http.addr 0.0.0.0 --http.port 8545 --http.corsdomain "*" --http.api web3,eth,debug,net,admin,txpool,miner --unlock "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19,0xa6bBf9891a0689Fe91d9c1538478b95effe0a57A" --password "/tmp/eth-password" --override.terminaltotaldifficulty 999999999999999999999999999 --fakepow --miner.etherbase "0x1081c645CC8c21EfbB0114eAc5fcDBE01a1a4b19" --mine --miner.threads=1 &
 GETH_PID=$!
 cpulimit -l 70 -p "$GETH_PID" >/tmp/cpulimit.log 2>&1 &
 
@@ -28,9 +28,6 @@ sysctl -w net.ipv4.udp_rmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.udp_wmem_min=4000 > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_rmem="4096 131072 6291456" > /dev/null 2>&1
 sysctl -w net.ipv4.tcp_wmem="4096 16384 4194304" > /dev/null 2>&1
-sysctl -w net.ipv4.tcp_max_syn_backlog=20 > /dev/null 2>&1
-sysctl -w net.ipv4.tcp_syncookies=0 > /dev/null 2>&1
-python3 /traffic_gen.py &
 python3 /eth_startup.py &
 tail -f /dev/null
 
