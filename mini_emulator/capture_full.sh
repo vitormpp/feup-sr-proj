@@ -123,14 +123,14 @@ for net in "${NETWORKS[@]}"; do
 
         ifaces=$(nsenter -t "$cpid" -n ip -o link show 2>/dev/null \
             | grep -oP '(?<=: )\S+(?=@)' \
-            | grep -E '^eth' || true)
+            | grep -v '^lo$' || true)
 
         if [[ -z "$ifaces" ]]; then
             # Fallback: try without the @... suffix pattern
             ifaces=$(nsenter -t "$cpid" -n ip -o link show 2>/dev/null \
                 | awk -F': ' '{print $2}' \
                 | awk '{print $1}' \
-                | grep -E '^eth' || true)
+                | grep -v '^lo$' || true)
         fi
 
         for iface in $ifaces; do

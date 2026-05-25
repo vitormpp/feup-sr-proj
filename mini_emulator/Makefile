@@ -118,7 +118,7 @@ show-attacks: $(ENV_FILE)  ## Show current attack configuration
 # ---------- Traffic capture ----------
 
 capture:  ## Capture pcaps on all docker bridges (Ctrl+C to stop)
-	sudo bash ./capture.sh $(CAPTURE_LABEL)
+	sudo bash ./capture_full.sh $(CAPTURE_LABEL)
 
 capture-zeek:  ## Capture Zeek JSON logs on all bridges (Ctrl+C to stop)
 	sudo ZEEK_IMAGE=$(ZEEK_IMAGE) bash ./capture_zeek.sh $(CAPTURE_LABEL)
