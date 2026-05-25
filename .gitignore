@@ -4,3 +4,4 @@ mini_emulator/captures_zeek/
 *training_run*
 venv/
 venvcd/
+*.env
