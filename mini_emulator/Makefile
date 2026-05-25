@@ -33,7 +33,7 @@
 
 COMPOSE_FILE     ?= docker-compose.yml
 PROJECT          ?= mini_emulator
-COMPOSE_CMD      := docker compose -f $(COMPOSE_FILE) -p $(PROJECT)
+COMPOSE_CMD      := docker-compose -f $(COMPOSE_FILE) -p $(PROJECT)
 
 CAPTURE_LABEL    ?= capture
 ZEEK_IMAGE       ?= zeek/zeek:latest
