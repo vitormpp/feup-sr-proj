@@ -16,8 +16,9 @@
 #    make show-attacks     Show current attack configuration
 #
 #  Capture:
-#    make capture          Capture pcaps on all bridges    (Ctrl+C to stop)
-#    make capture-zeek     Capture Zeek JSON logs          (Ctrl+C to stop)
+#    make capture                   Capture pcaps on all bridges (Ctrl+C to stop)
+#    make capture CAPTURE_SECS=120  Capture, auto-stop after 120s
+#    make capture-zeek              Capture Zeek JSON logs       (Ctrl+C to stop)
 #
 #  Observability:
 #    make logs             Tail container logs
@@ -36,6 +37,7 @@ PROJECT          ?= mini_emulator
 COMPOSE_CMD      := docker-compose -f $(COMPOSE_FILE) -p $(PROJECT)
 
 CAPTURE_LABEL    ?= capture
+CAPTURE_SECS     ?=
 ZEEK_IMAGE       ?= zeek/zeek:latest
 ENV_FILE         := .env
 
@@ -117,8 +119,8 @@ show-attacks: $(ENV_FILE)  ## Show current attack configuration
 
 # ---------- Traffic capture ----------
 
-capture:  ## Capture pcaps on all docker bridges (Ctrl+C to stop)
-	sudo bash ./capture_full.sh $(CAPTURE_LABEL)
+capture:  ## Capture pcaps on all docker bridges (Ctrl+C, or CAPTURE_SECS=N to auto-stop)
+	sudo bash ./capture_full.sh $(CAPTURE_LABEL) $(CAPTURE_SECS)
 
 capture-zeek:  ## Capture Zeek JSON logs on all bridges (Ctrl+C to stop)
 	sudo ZEEK_IMAGE=$(ZEEK_IMAGE) bash ./capture_zeek.sh $(CAPTURE_LABEL)
