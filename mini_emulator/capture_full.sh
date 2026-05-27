@@ -16,12 +16,18 @@
 #   4.  Optionally producing a single merged pcap of all networks.
 #
 # Usage:
-#   sudo ./capture_full.sh [label]
-#   sudo ./capture_full.sh baseline          # label = "baseline"
-#   sudo CAPTURE_SECS=120 ./capture_full.sh  # auto-stop after 120s
+#   sudo ./capture_full.sh [label] [duration_secs]
+#   sudo ./capture_full.sh baseline          # label = "baseline", run until Ctrl+C
+#   sudo ./capture_full.sh baseline 120      # auto-stop after 120s
+#   sudo CAPTURE_SECS=120 ./capture_full.sh  # same, via env var
+#
+# Arguments:
+#   label          — output label (default: "capture")
+#   duration_secs  — if given, auto-stop after this many seconds
+#                    (overrides CAPTURE_SECS; default: run until Ctrl+C)
 #
 # Environment variables:
-#   CAPTURE_SECS        — if set, auto-stop after this many seconds
+#   CAPTURE_SECS        — fallback auto-stop duration if no 2nd argument
 #                         (default: empty = run until Ctrl+C)
 #   COMPOSE_PROJECT_NAME — compose project name (default: mini_emulator)
 #   SNAPLEN             — tcpdump snap length   (default: 0 = full packet)
@@ -46,7 +52,13 @@ mkdir -p "$RAW_DIR"
 
 PROJECT="${COMPOSE_PROJECT_NAME:-mini_emulator}"
 SNAPLEN="${SNAPLEN:-0}"
-CAPTURE_SECS="${CAPTURE_SECS:-}"
+# Duration: 2nd positional arg wins, else CAPTURE_SECS env var, else empty.
+CAPTURE_SECS="${2:-${CAPTURE_SECS:-}}"
+
+if [[ -n "$CAPTURE_SECS" && ! "$CAPTURE_SECS" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: duration must be a positive integer (seconds), got '$CAPTURE_SECS'." >&2
+    exit 1
+fi
 
 # Docker network names from the compose topology
 NETWORKS=(net_160_net0 net_161_net0 net_162_net0 net_ix_ix103)
