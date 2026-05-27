@@ -59,9 +59,10 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-for cmd in docker tcpdump nsenter; do
+for cmd in docker tcpdump nsenter editcap mergecap; do
     command -v "$cmd" >/dev/null 2>&1 || {
-        echo "ERROR: '$cmd' not found." >&2
+        echo "ERROR: '$cmd' not found. Install wireshark-common:" >&2
+        echo "  sudo apt-get install wireshark-common" >&2
         exit 1
     }
 done
@@ -219,88 +220,14 @@ cleanup() {
             cp "${files[0]}" "$out_pcap"
             echo "  $net_name: 1 source -> $out_pcap"
         else
-            # Multiple captures — merge then deduplicate
+            # Multiple captures — merge chronologically, then deduplicate
             merged_tmp="${OUT_DIR}/.merged_${net_name}.pcap"
+            mergecap -w "$merged_tmp" "${files[@]}"
 
-            if command -v mergecap >/dev/null 2>&1; then
-                # Wireshark's mergecap: merge chronologically
-                mergecap -w "$merged_tmp" "${files[@]}" 2>/dev/null
-            else
-                # Fallback: use tcpdump to merge (read all, write one)
-                # This works because tcpdump -r can read multiple files
-                # via process substitution (only first file keeps header)
-                cp "${files[0]}" "$merged_tmp"
-                for ((i=1; i<${#files[@]}; i++)); do
-                    # Append packets from subsequent files using tcpdump
-                    tcpdump -r "${files[$i]}" -w - 2>/dev/null | tail -c +25 >> "$merged_tmp" 2>/dev/null || true
-                done
-            fi
-
-            # Deduplicate: remove packets with identical timestamps + content
-            if command -v editcap >/dev/null 2>&1; then
-                # editcap -d: remove duplicates within a time window
-                # -D 0.000001: duplicates must be within 1μs of each other
-                editcap -d "$merged_tmp" "$out_pcap" 2>/dev/null
-                dups_info=$(editcap -d "$merged_tmp" /dev/null 2>&1 | tail -1 || echo "")
-                echo "  $net_name: ${#files[@]} sources merged+deduped -> $out_pcap  $dups_info"
-            elif command -v tshark >/dev/null 2>&1; then
-                # Alternative: use tshark with duplicate detection
-                # tshark doesn't have built-in dedup, so use editcap via tshark install
-                cp "$merged_tmp" "$out_pcap"
-                echo "  $net_name: ${#files[@]} sources merged -> $out_pcap (editcap not found, no dedup)"
-            else
-                # No Wireshark tools — use Python deduplicator
-                if command -v python3 >/dev/null 2>&1; then
-                    python3 -c "
-import struct, hashlib, sys
-
-def dedup_pcap(infile, outfile):
-    \"\"\"Read a pcap, remove duplicate packets (same timestamp + data).\"\"\"
-    seen = set()
-    kept = 0
-    dropped = 0
-    with open(infile, 'rb') as fin, open(outfile, 'wb') as fout:
-        # Copy global header (24 bytes)
-        ghdr = fin.read(24)
-        if len(ghdr) < 24:
-            return
-        fout.write(ghdr)
-        # Determine endianness and header format
-        magic = struct.unpack('<I', ghdr[:4])[0]
-        if magic == 0xa1b2c3d4:
-            endian = '<'
-        elif magic == 0xd4c3b2a1:
-            endian = '>'
-        else:
-            # Unknown format, just copy
-            fout.write(fin.read())
-            return
-        while True:
-            pkt_hdr = fin.read(16)
-            if len(pkt_hdr) < 16:
-                break
-            ts_sec, ts_usec, incl_len, orig_len = struct.unpack(endian + 'IIII', pkt_hdr)
-            pkt_data = fin.read(incl_len)
-            if len(pkt_data) < incl_len:
-                break
-            # Hash: timestamp + first 128 bytes of packet data
-            h = hashlib.md5(pkt_hdr[:8] + pkt_data[:128]).digest()
-            if h not in seen:
-                seen.add(h)
-                fout.write(pkt_hdr + pkt_data)
-                kept += 1
-            else:
-                dropped += 1
-    print(f'  Kept {kept}, dropped {dropped} duplicate(s)')
-
-dedup_pcap('$merged_tmp', '$out_pcap')
-" 2>/dev/null
-                    echo "  $net_name: ${#files[@]} sources merged+deduped (Python) -> $out_pcap"
-                else
-                    cp "$merged_tmp" "$out_pcap"
-                    echo "  $net_name: ${#files[@]} sources merged -> $out_pcap (no dedup tools available)"
-                fi
-            fi
+            # editcap -d: remove packets with identical content within a 1μs window
+            editcap -d "$merged_tmp" "$out_pcap"
+            dups_info=$(editcap -d "$merged_tmp" /dev/null 2>&1 | tail -1 || true)
+            echo "  $net_name: ${#files[@]} sources merged+deduped -> $out_pcap  $dups_info"
 
             rm -f "$merged_tmp"
         fi
@@ -310,12 +237,8 @@ dedup_pcap('$merged_tmp', '$out_pcap')
     # Create a single merged pcap of all networks
     if [[ ${#FINAL_PCAPS[@]} -gt 1 ]]; then
         merged_all="${OUT_DIR}/merged.pcap"
-        if command -v mergecap >/dev/null 2>&1; then
-            mergecap -w "$merged_all" "${FINAL_PCAPS[@]}" 2>/dev/null
-            echo "  All networks merged -> $merged_all"
-        else
-            echo "  (Install mergecap/wireshark-common for a combined merged.pcap)"
-        fi
+        mergecap -w "$merged_all" "${FINAL_PCAPS[@]}"
+        echo "  All networks merged -> $merged_all"
     fi
 
     # Fix ownership
