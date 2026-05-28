@@ -1,5 +1,7 @@
 FROM 707ec7fa5d3740bf02573cbd0b37e6ea
 ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
+COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 RUN apt-get update && apt-get install -y --no-install-recommends curl dnsutils ipcalc iproute2 iputils-ping jq mtr-tiny nano netcat tcpdump termshark vim-nox zsh
 RUN apt-get update && apt-get install -y --no-install-recommends curl dnsutils ipcalc iproute2 iputils-ping jq mtr-tiny nano netcat tcpdump termshark vim-nox zsh
 COPY 082b96ec819c95ae773daebde675ef80 /start.sh

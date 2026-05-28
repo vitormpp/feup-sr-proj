@@ -1,5 +1,7 @@
 FROM 39e016aa9e819f203ebc1809245a5818
 ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
+COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 RUN mkdir -p /usr/share/doc/bird2/examples/
 RUN touch /usr/share/doc/bird2/examples/bird.conf
 COPY 082b96ec819c95ae773daebde675ef80 /start.sh

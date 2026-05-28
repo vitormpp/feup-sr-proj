@@ -92,11 +92,11 @@ MIN_ETH = float(os.environ.get("MIN_ETH", "0.001"))
 MAX_ETH = float(os.environ.get("MAX_ETH", "0.1"))
 
 # Delay range between transactions (in seconds)
-MIN_DELAY = float(os.environ.get("MIN_DELAY", "1"))
-MAX_DELAY = float(os.environ.get("MAX_DELAY", "2"))
+MIN_DELAY = float(os.environ.get("MIN_DELAY", "0.5"))
+MAX_DELAY = float(os.environ.get("MAX_DELAY", "1.5"))
 
 # How long to wait for geth to become ready before starting (seconds)
-GETH_READY_TIMEOUT = int(os.environ.get("GETH_READY_TIMEOUT", str(60 * 20)))
+GETH_READY_TIMEOUT = int(os.environ.get("GETH_READY_TIMEOUT", str(60)))
 
 # Logging
 

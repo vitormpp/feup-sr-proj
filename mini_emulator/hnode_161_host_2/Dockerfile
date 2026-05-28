@@ -1,5 +1,7 @@
 FROM 98a2693c996c2294358552f48373498d
 ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
+COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 COPY d18858afc6bb66ec3a19d872077acfd2 /seedemu_sniffer
 COPY 17ac2d812a99a91e7f747e1defb72a29 /seedemu_worker
