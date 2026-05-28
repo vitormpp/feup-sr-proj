@@ -4,7 +4,7 @@ services:
         build:
             context: ./new_eth_node
         image: new_ethereum_node
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
     707ec7fa5d3740bf02573cbd0b37e6ea:
@@ -109,7 +109,7 @@ services:
         environment:
             - CONTAINER_NAME=as160h-host_1-10.160.0.72
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -141,7 +141,7 @@ services:
         environment:
             - CONTAINER_NAME=as160h-host_2-10.160.0.73
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -176,7 +176,7 @@ services:
         environment:
             - CONTAINER_NAME=as160brd-router0-10.160.0.254
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -247,7 +247,7 @@ services:
         environment:
             - CONTAINER_NAME=as161h-host_1-10.161.0.72
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -280,7 +280,7 @@ services:
         environment:
             - CONTAINER_NAME=as161h-host_2-10.161.0.73
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -316,7 +316,7 @@ services:
         environment:
             - CONTAINER_NAME=as161brd-router0-10.161.0.254
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -387,7 +387,7 @@ services:
         environment:
             - CONTAINER_NAME=as162h-host_1-10.162.0.72
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -420,7 +420,7 @@ services:
         environment:
             - CONTAINER_NAME=as162h-host_2-10.162.0.73
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -453,7 +453,7 @@ services:
             - ECLIPSE_ARP=${ECLIPSE_ARP:-false}
             - ECLIPSE_BGP=${ECLIPSE_BGP:-false}
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -489,7 +489,7 @@ services:
         environment:
             - CONTAINER_NAME=as162brd-router0-10.162.0.254
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -519,7 +519,7 @@ services:
         environment:
             - CONTAINER_NAME=as103brd-ix103-10.103.0.103
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -532,7 +532,7 @@ services:
         ports:
             - 5000:5000/tcp
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
@@ -546,7 +546,7 @@ services:
         ports:
             - 8080:8080/tcp
 
-        cpus: 0.5
+        cpus: 1.5
         mem_limit: 512m
         mem_reservation: 128m
 
