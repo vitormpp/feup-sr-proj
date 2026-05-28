@@ -1,20 +1,17 @@
 """
-config.py
-=========
-Single source of truth for the intrusion-detection pipeline (per-packet variant).
+config_alt.py
+=============
+Per-packet IDS configuration. Identical topology / labelling rules as the
+flow-based variant; the only substantive difference is the feature lists,
+which now describe the **online** per-packet output of
+``feature_extraction_packets.py``.
 
-Identical topology ground-truth and identity-column rules as the flow-based
-version.  The only substantive change is the feature lists: BASE_FEATURES and
-ENGINEERED_FEATURES now reflect the three-layer output of
-packet_feature_extraction.py rather than NFStream's per-flow aggregates.
-
-Design rule (task requirement #2)
-----------------------------------
-No feature handed to a model may encode a fixed identity or wall-clock time.
-Identity columns (IP, MAC, port, absolute timestamps) live in IDENTITY_COLUMNS
-and are dropped by preprocessing.build_matrix before any model sees them.
-All features are either per-packet measurements or statistics derived purely
-from relative deltas and counts within a flow.
+Online rule (CRITICAL)
+----------------------
+Every feature listed here is computable from packets seen at or before the
+current packet's timestamp. There are NO completed-flow summaries: a real-time
+IDS cannot see the future, so we don't list anything that depends on the
+flow's final state (total bytes, final mean IAT, flow duration, ...).
 """
 
 from __future__ import annotations
@@ -61,16 +58,23 @@ BENIGN_SPECIAL_PREFIXES: tuple[str, ...] = (
 )
 
 # --------------------------------------------------------------------------- #
-#  Identity columns -- used only to build labels, dropped before training.
-#  Matches the renamed _identity_* columns output by packet_feature_extraction,
-#  plus any other columns that should never reach a model.
+#  Identity columns -- used only to build labels / group rows for CV, dropped
+#  before training. Matches the renamed _identity_* columns output by the
+#  extractor, plus the _flow_key string used for GroupKFold.
 # --------------------------------------------------------------------------- #
 IDENTITY_COLUMNS: list[str] = [
-    # core identity (renamed from _identity_* by the extractor)
+    # Absolute wall-clock timestamp: used by labelling, never a feature.
+    "ts",
     "src_ip", "dst_ip",
     "src_mac", "dst_mac",
     "src_port", "dst_port",
-    # if nDPI / application fields ever appear (e.g. from a hybrid extractor)
+    # ARP operation (1=request, 2=reply): used by labelling, never a feature.
+    "arp_op",
+    # Flow-instance id: kept so pipeline_alt can group on it, never a feature.
+    "_flow_key",
+    # Labelling audit columns (added by labeling_alt.add_labels): never features.
+    "_attack_type", "_label_reason",
+    # If a hybrid extractor ever surfaces these, treat them as identity too.
     "application_name", "application_category_name",
     "requested_server_name", "client_fingerprint",
     "server_fingerprint", "user_agent", "content_type",
@@ -79,53 +83,63 @@ IDENTITY_COLUMNS: list[str] = [
 LABEL_COLUMN = "label"
 LABEL_NAMES  = ["normal", "malicious"]
 
+# Name of the GroupKFold grouping column. Lives in IDENTITY_COLUMNS so it
+# never reaches a model, but the pipeline pulls it out to pass as `groups`.
+GROUP_COLUMN = "_flow_key"
+
 # --------------------------------------------------------------------------- #
-#  BASE_FEATURES -- direct measurements from packet_feature_extraction.py.
-#  Three layers:
+#  BASE_FEATURES -- direct measurements from feature_extraction_packets.
+#  Two layers only:
 #    1. Packet-level     -- what this packet looks like in isolation
 #    2. Running context  -- rolling stats up to and including this packet
-#    3. Flow summary     -- completed-flow aggregates attached to every row
 #
-#  None of these encode who sent the packet or when in wall-clock time.
+#  No "completed-flow summary" layer: that would leak the future.
 # --------------------------------------------------------------------------- #
 BASE_FEATURES: list[str] = [
 
     # ── 1. Packet-level ────────────────────────────────────────────────── #
-    "protocol",           # L4 protocol number (6=TCP, 17=UDP, …)
-    "ip_ttl",             # IP time-to-live
-    "ip_len",             # IP-layer length field
-    "pkt_len",            # total captured frame length
-    "tcp_window_size",    # TCP receive-window size (0 for non-TCP)
-    "direction",          # 1 = forward (initiator→responder), 0 = reverse
+    # Sparse multi-hot protocol booleans (see feature_extraction_packets):
+    #   * exactly one of proto_tcp/udp/icmp/... fires for an IP packet,
+    #   * proto_arp fires alone for L2-only ARP frames,
+    #   * proto_bgp fires alongside proto_tcp when TCP/179 is involved.
+    "proto_arp",
+    "proto_bgp",
+    "proto_esp",
+    "proto_gre",
+    "proto_icmp",
+    "proto_icmpv6",
+    "proto_ospf",
+    "proto_other",
+    "proto_sctp",
+    "proto_tcp",
+    "proto_udp",
 
-    # TCP flag bits (individual, not a bitmask int)
-    "tcp_syn",
-    "tcp_ack",
-    "tcp_rst",
-    "tcp_fin",
-    "tcp_psh",
-    "tcp_urg",
-    "tcp_ece",
-    "tcp_cwr",
+    "ip_ttl",
+    "ip_len",
+    "pkt_len",
+    "tcp_window_size",
+    "direction",          # 1 = same direction as the flow's first packet
 
-    # ── 2. Running context (up to and including this packet) ───────────── #
-    # position in flow
-    "flow_pkt_index",           # 0-based packet index within its flow
+    # TCP flag bits (individual, not a bitmask)
+    "tcp_syn", "tcp_ack", "tcp_rst", "tcp_fin",
+    "tcp_psh", "tcp_urg", "tcp_ece", "tcp_cwr",
 
-    # inter-arrival times (relative deltas, not absolute timestamps)
-    "iat_from_prev_ms",         # ms since previous packet in flow (any dir)
-    "fwd_iat_from_prev_ms",     # ms since previous forward packet
-    "rev_iat_from_prev_ms",     # ms since previous reverse packet
+    # ── 2. Running context (past only, up to this packet) ──────────────── #
+    "flow_pkt_index",       # = fwd_pkts + rev_pkts - 1; total derives from here
 
-    # cumulative volume
-    "flow_pkts_so_far",
-    "flow_bytes_so_far",
+    "iat_from_prev_ms",
+    "fwd_iat_from_prev_ms",
+    "rev_iat_from_prev_ms",
+
+    # Forward and reverse byte/packet running totals. The bidirectional totals
+    # are perfectly collinear with these (sum), so they're not listed -- only
+    # the byte total is kept because the bytes/packet ratio uses it directly.
     "fwd_pkts_so_far",
     "fwd_bytes_so_far",
     "rev_pkts_so_far",
     "rev_bytes_so_far",
+    "flow_bytes_so_far",
 
-    # running packet-size distribution (Welford online)
     "run_mean_ps",
     "run_stddev_ps",
     "run_min_ps",
@@ -133,13 +147,11 @@ BASE_FEATURES: list[str] = [
     "run_fwd_mean_ps",
     "run_rev_mean_ps",
 
-    # running IAT distribution
     "run_mean_iat_ms",
     "run_stddev_iat_ms",
     "run_fwd_mean_iat_ms",
     "run_rev_mean_iat_ms",
 
-    # running TCP flag tallies
     "flow_syn_so_far",
     "flow_ack_so_far",
     "flow_rst_so_far",
@@ -148,93 +160,29 @@ BASE_FEATURES: list[str] = [
     "flow_fwd_syn_so_far",
     "flow_rev_syn_so_far",
 
-    # running ratios
     "run_syn_ratio",
     "run_rst_ratio",
     "run_fwd_ratio",
     "run_bytes_per_pkt",
 
-    # elapsed flow duration up to this packet (relative delta, ms)
+    # Time since the flow started, *relative* to the flow itself.
     "flow_elapsed_ms",
-
-    # ── 3. Completed-flow summary (attached to every row in the flow) ──── #
-    # total volume
-    "flow_total_pkts",
-    "flow_total_bytes",
-    "flow_fwd_total_pkts",
-    "flow_fwd_total_bytes",
-    "flow_rev_total_pkts",
-    "flow_rev_total_bytes",
-
-    # total flow duration (relative delta)
-    "flow_duration_ms",
-
-    # final packet-size distribution
-    "flow_mean_ps",
-    "flow_stddev_ps",
-    "flow_min_ps",
-    "flow_max_ps",
-    "flow_fwd_mean_ps",
-    "flow_rev_mean_ps",
-
-    # final IAT distribution
-    "flow_mean_iat_ms",
-    "flow_stddev_iat_ms",
-    "flow_fwd_mean_iat_ms",
-    "flow_rev_mean_iat_ms",
-
-    # final TCP flag tallies
-    "flow_total_syn",
-    "flow_total_ack",
-    "flow_total_rst",
-    "flow_total_fin",
-    "flow_total_psh",
-    "flow_fwd_total_syn",
-    "flow_rev_total_syn",
-
-    # final flow-level ratios
-    "flow_syn_ratio",
-    "flow_ack_ratio",
-    "flow_rst_ratio",
-    "flow_fin_ratio",
-    "flow_bytes_per_pkt",
-    "flow_bytes_per_ms",
-    "flow_pkts_per_ms",
-    "flow_fwd_pkt_ratio",
-    "flow_fwd_byte_ratio",
-    "flow_download_upload_ratio",
-    "flow_mean_ps_ratio",
 ]
 
 # --------------------------------------------------------------------------- #
 #  ENGINEERED_FEATURES -- derived columns added by preprocessing.py.
-#  Same philosophy as before: ratios / rates, no identity, no absolute time.
+#  Every one is computable from past-only inputs.
 # --------------------------------------------------------------------------- #
 ENGINEERED_FEATURES: list[str] = [
-    # packet position as a fraction of the total flow length
-    # (tells the model whether this is an early or late packet)
-    "pkt_position_ratio",
-
-    # how much of the flow's total bytes have arrived by this packet
-    "bytes_progress_ratio",
-
-    # ratio of this packet's size to the running mean so far
-    # (spike detector: large relative to what we've seen)
+    # how anomalous this packet's size is vs. the running mean so far
     "pkt_size_vs_run_mean",
 
-    # ratio of this packet's size to the completed-flow mean
-    # (same idea but anchored to the final distribution)
-    "pkt_size_vs_flow_mean",
-
-    # how anomalous this IAT is relative to the running mean
-    # (large value = unusually long gap or burst)
+    # how anomalous this IAT is vs. the running mean so far
     "iat_vs_run_mean",
 
-    # asymmetry between forward and reverse byte volumes so far
+    # signed forward/reverse byte asymmetry over packets seen so far,
+    # in [-1, 1]: +1 = all forward, -1 = all reverse
     "run_byte_asymmetry",
-
-    # asymmetry between forward and reverse byte volumes (completed flow)
-    "flow_byte_asymmetry",
 ]
 
 # Reproducibility
