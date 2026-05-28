@@ -6,3 +6,5 @@ mini_emulator/captures_zeek/
 venv/
 venvcd/
 *.env
+__pycache__/
+ids_out/
