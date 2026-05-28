@@ -51,7 +51,7 @@ SYNFLOOD_TARGETS = [
     ("10.162.0.74", 53),
 ]
 
-SYNFLOOD_FLOOD_DURATION  = 0.015   # seconds each flood runs
+SYNFLOOD_FLOOD_DURATION  = 0.1   # seconds each flood runs
 SYNFLOOD_BREAK_DURATION  = 240    # seconds of silence between floods
 
 SYNFLOOD_PATH = "/synflood"
