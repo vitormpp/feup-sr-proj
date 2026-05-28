@@ -86,7 +86,11 @@ def train_outlier_models(X_train_normal: np.ndarray,
     results: dict[str, dict] = {}
     for name, est in _build_detectors(contamination).items():
         log.info("  fitting %s ...", name)
-        est.fit(X_tr)
+        try:
+            est.fit(X_tr)
+        except Exception as e:
+            log.error("  failed to fit %s: %s", name, e)
+            continue
         raw = est.predict(X_te)                 # -1 outlier / +1 inlier
         y_pred = np.where(raw == -1, 1, 0)      # -> 1 malicious / 0 normal
         scores = _anomaly_score(est, X_te)
