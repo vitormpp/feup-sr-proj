@@ -71,7 +71,7 @@ ECLIPSE_IPTABLES_RULES = [
     ["iptables", "-A", "FORWARD", "-d", ECLIPSE_VICTIM_IP, "-p", "udp", "-j", "DROP"],
 ]
 
-ARP_ATTACK_DURATION = 2   # seconds ARP eclipse stays active
+ARP_ATTACK_DURATION = 40   # seconds ARP eclipse stays active
 ARP_BREAK_DURATION  = 120   # seconds of silence between ARP attacks
 
 # BGP eclipse: attacker router container and BIRD config
@@ -88,7 +88,7 @@ protocol static hijack {
 }
 """
 
-BGP_ATTACK_DURATION = 1   # seconds BGP blackhole stays active
+BGP_ATTACK_DURATION = 40  # seconds BGP blackhole stays active
 BGP_BREAK_DURATION  = 120   # seconds of silence between BGP attacks
 
 # ──────────────────────────────────────────────────────────────────────────────
