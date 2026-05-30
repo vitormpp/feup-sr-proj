@@ -27,7 +27,9 @@ These are mapped to label=0 (normal) and label=1 (malicious) for reporting.
 
 import argparse
 import sys
+from pathlib import Path
 
+import joblib
 import numpy as np
 from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
@@ -75,6 +77,9 @@ def main() -> None:
     parser.add_argument(
         "--window", type=float, default=1.0,
         help="Rolling-feature look-back window in seconds (default: 1.0)")
+    parser.add_argument(
+        "--model-dir", type=Path, default=None, metavar="DIR",
+        help="If set, save fitted models and scaler to this directory")
     args = parser.parse_args()
 
     # ---- extract features --------------------------------------------------
@@ -85,6 +90,9 @@ def main() -> None:
                               window_seconds=args.window)
     except Exception as exc:
         sys.exit(f"Feature extraction failed: {exc}")
+
+    df.to_csv("features.csv", index=False)  
+    print("  Features saved to features.csv")
 
     X = df.drop(columns=["label"]).values.astype(np.float32)
     y = df["label"].values
@@ -131,6 +139,12 @@ def main() -> None:
                                     target_names=["normal", "malicious"],
                                     digits=3))
         print(f"  ROC-AUC: {auc:.4f}\n")
+
+        if args.model_dir is not None:
+            args.model_dir.mkdir(parents=True, exist_ok=True)
+            joblib.dump(det,    args.model_dir / f"{name}.joblib")
+            joblib.dump(scaler, args.model_dir / f"{name}_scaler.joblib")
+            print(f"  Saved {name}.joblib and {name}_scaler.joblib to {args.model_dir}\n")
 
 
 if __name__ == "__main__":

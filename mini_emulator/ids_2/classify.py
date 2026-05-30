@@ -24,7 +24,9 @@ Random Forest uses its built-in balanced class weighting.
 
 import argparse
 import sys
+from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -46,8 +48,7 @@ from ids_2.feature_extraction import extract_features
 _NEEDS_SCALING = {"lr", "svm", "knn"}
 
 _CLASSIFIERS = {
-    "rf":  RandomForestClassifier(n_estimators=100, class_weight="balanced",
-                                  random_state=42, n_jobs=-1),
+    "rf":  RandomForestClassifier( n_estimators=60, max_depth=12, min_samples_leaf=10, class_weight="balanced", random_state=42, n_jobs=-1,),
     "lr":  LogisticRegression(max_iter=1000, class_weight="balanced",
                               random_state=42),
     "svm": SVC(kernel="rbf", class_weight="balanced", random_state=42,
@@ -80,6 +81,9 @@ def main() -> None:
     parser.add_argument(
         "--window", type=float, default=1.0,
         help="Rolling-feature look-back window in seconds (default: 1.0)")
+    parser.add_argument(
+        "--model-dir", type=Path, default=None, metavar="DIR",
+        help="If set, save fitted models and scalers to this directory")
     args = parser.parse_args()
 
     # ---- extract features --------------------------------------------------
@@ -90,6 +94,9 @@ def main() -> None:
                               window_seconds=args.window)
     except Exception as exc:
         sys.exit(f"Feature extraction failed: {exc}")
+
+    df.to_csv("features.csv", index=False)
+    print("  Features saved to features.csv")
 
     X = df.drop(columns=["label"]).values.astype(np.float32)
     y = df["label"].values
@@ -114,6 +121,7 @@ def main() -> None:
             X_tr    = scaler.fit_transform(X_train)
             X_te    = scaler.transform(X_test)
         else:
+            scaler  = None
             X_tr, X_te = X_train, X_test
 
         clf.fit(X_tr, y_train)
@@ -126,6 +134,13 @@ def main() -> None:
                                     target_names=["normal", "malicious"],
                                     digits=3))
         print(f"  ROC-AUC: {auc:.4f}\n")
+
+        if args.model_dir is not None:
+            args.model_dir.mkdir(parents=True, exist_ok=True)
+            joblib.dump(clf, args.model_dir / f"{name}.joblib")
+            if scaler is not None:
+                joblib.dump(scaler, args.model_dir / f"{name}_scaler.joblib")
+            print(f"  Saved {name}.joblib to {args.model_dir}\n")
 
 
 if __name__ == "__main__":
