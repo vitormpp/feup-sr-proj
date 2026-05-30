@@ -17,12 +17,13 @@
 #    make down             Stop and remove containers + networks
 #    make restart          down + up
 #
-#  Run attacks from the host VM (each loops on its own interval — Ctrl+C stops):
-#    make synflood         TCP SYN flood
-#    make arp              ARP-spoofing eclipse attack
-#    make bgp              BGP-hijack eclipse attack
-#    make attack           All of the above (attacks.py --all)
-#    Tuning:  make synflood ATTACK_ARGS="--synflood-interval 90 --cycles 5"
+#  Run attacks from the host VM via attacks.py — pick which ones by setting
+#  each to 1 (default 0). Each loops on its own interval; Ctrl+C stops.
+#    make attack SYNFLOOD=1              TCP SYN flood only
+#    make attack ARP=1 SYNFLOOD=1        ARP eclipse + SYN flood
+#    make attack BGP=1                   BGP-hijack eclipse
+#    make all                            Every attack (attacks.py --all)
+#    Tuning:  make attack SYNFLOOD=1 ATTACK_ARGS="--synflood-interval 90 --cycles 5"
 #
 #  Double spend (host VM):
 #    make fake-tx          Send fraudulent tx to the isolated victim
@@ -56,6 +57,23 @@ ATTACKS          := ./attacks.py
 SYNFLOOD_BIN     := synflood/synflood
 ATTACK_ARGS      ?=
 
+# Attack selectors — set each to 1 to enable it for `make attack`.
+SYNFLOOD         ?= 0
+ARP              ?= 0
+BGP              ?= 0
+
+# Assemble the attacks.py flags from the selectors above.
+ATTACK_FLAGS     :=
+ifeq ($(SYNFLOOD),1)
+ATTACK_FLAGS     += --synflood
+endif
+ifeq ($(ARP),1)
+ATTACK_FLAGS     += --arp
+endif
+ifeq ($(BGP),1)
+ATTACK_FLAGS     += --bgp
+endif
+
 CAPTURE_LABEL    ?= capture
 CAPTURE_SECS     ?=
 ZEEK_IMAGE       ?= zeek/zeek:latest
@@ -63,7 +81,7 @@ ZEEK_IMAGE       ?= zeek/zeek:latest
 # ---------- Phony targets ----------
 
 .PHONY: build up down restart \
-        synflood arp bgp attack \
+        attack all \
         fake-tx real-tx \
         capture capture-zeek \
         logs ps status clean help
@@ -83,24 +101,20 @@ down:  ## Stop and remove containers, networks
 
 restart: down up  ## Restart the emulator (clean baseline for attacks)
 
-# ---------- Attacks (launched from the host VM) ----------
-# attacks.py auto-detects the synflood binary / attack scripts in this tree.
+# ---------- Attacks (launched from the host VM via attacks.py) ----------
+# Select attacks with SYNFLOOD=1 / ARP=1 / BGP=1; attacks.py auto-detects the
+# synflood binary and the per-attack scripts in this tree.
 
-$(SYNFLOOD_BIN):
-	@echo "ERROR: $(SYNFLOOD_BIN) is missing — build it first." >&2; exit 1
+attack:  ## Run selected attacks (e.g. make attack SYNFLOOD=1 ARP=1)
+	@if [ -z "$(strip $(ATTACK_FLAGS))" ]; then \
+		echo "No attacks selected. Set one or more of SYNFLOOD=1 ARP=1 BGP=1 (or use 'make all')." >&2; \
+		exit 1; \
+	fi
+	@[ -f $(SYNFLOOD_BIN) ] && chmod +x $(SYNFLOOD_BIN) || true
+	$(SUDO) $(PYTHON) $(ATTACKS) $(ATTACK_FLAGS) $(ATTACK_ARGS)
 
-synflood: $(SYNFLOOD_BIN)  ## Launch the TCP SYN flood from the host
-	@chmod +x $(SYNFLOOD_BIN)
-	$(SUDO) $(PYTHON) $(ATTACKS) --synflood $(ATTACK_ARGS)
-
-arp:  ## Launch the ARP-spoofing eclipse attack from the host
-	$(SUDO) $(PYTHON) $(ATTACKS) --arp $(ATTACK_ARGS)
-
-bgp:  ## Launch the BGP-hijack eclipse attack from the host
-	$(SUDO) $(PYTHON) $(ATTACKS) --bgp $(ATTACK_ARGS)
-
-attack: $(SYNFLOOD_BIN)  ## Launch every attack from the host (attacks.py --all)
-	@chmod +x $(SYNFLOOD_BIN)
+all:  ## Run every attack (attacks.py --all)
+	@[ -f $(SYNFLOOD_BIN) ] && chmod +x $(SYNFLOOD_BIN) || true
 	$(SUDO) $(PYTHON) $(ATTACKS) --all $(ATTACK_ARGS)
 
 # ---------- Double spend (host VM) ----------
