@@ -15,10 +15,10 @@ Attacks:
 Per-attack scheduling (seconds between successive runs of that attack):
   --arp-interval       S   (default 10)
   --bgp-interval       S   (default 10)
-  --synflood-interval  S   (default 60)
+  --synflood-interval  S   (default 30)
 
 SYN flood tuning:
-  --synflood-duration  S   Seconds to flood per run (default 0.1)
+  --synflood-duration  S   Seconds to flood per run (default 0.5)
 
 Global:
   --cycles N   Max runs per attack; 0 = run forever (default 0)
@@ -257,10 +257,10 @@ def main():
                         help="Seconds between ARP runs (default 10)")
     parser.add_argument("--bgp-interval", type=int, default=10,
                         help="Seconds between BGP runs (default 10)")
-    parser.add_argument("--synflood-interval", type=int, default=60,
-                        help="Seconds between SYN flood runs (default 60)")
-    parser.add_argument("--synflood-duration", type=int, default=0.1,
-                        help="Seconds to SYN flood per run (default 30)")
+    parser.add_argument("--synflood-interval", type=int, default=30,
+                        help="Seconds between SYN flood runs (default 30)")
+    parser.add_argument("--synflood-duration", type=int, default=0.5,
+                        help="Seconds to SYN flood per run (default 0.5)")
 
     parser.add_argument("--cycles", type=int, default=0,
                         help="Max runs per attack; 0 = forever (default 0)")

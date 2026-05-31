@@ -58,9 +58,9 @@ SYNFLOOD_BIN     := synflood/synflood
 ATTACK_ARGS      ?=
 
 # Attack selectors — set each to 1 to enable it for `make attack`.
-SYNFLOOD         ?= 0
+SYNFLOOD         ?= 1
 ARP              ?= 0
-BGP              ?= 0
+BGP              ?= 1
 
 # Assemble the attacks.py flags from the selectors above.
 ATTACK_FLAGS     :=

