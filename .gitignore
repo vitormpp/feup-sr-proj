@@ -12,3 +12,6 @@ model_plots/
 csv_plots/
 dataset_final.csv
 dataset_final.pcap
+dataset_validation.csv
+dataset_validation.pcap
+

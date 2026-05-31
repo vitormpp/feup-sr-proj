@@ -23,6 +23,10 @@ Options
                             Packets whose src or dst is not in this list
                             are labelled malicious (label=1).
                             Omit to disable the unknown-address check.
+    --malicious-ip <ip>     Override the known-malicious IP address.
+                            Default: 10.162.0.74
+    --malicious-mac <mac>   Override the known-malicious MAC address.
+                            Default: 02:42:0a:a2:00:4a
     -h, --help              Show this help message and exit.
 
 Examples
@@ -35,6 +39,9 @@ Examples
 
     # With known-address whitelist
     python pcap_to_csv.py capture.pcap -k 192.168.1.1 192.168.1.2 10.0.0.1
+
+    # Override malicious host identifiers
+    python pcap_to_csv.py capture.pcap --malicious-ip 192.168.1.99 --malicious-mac 00:11:22:33:44:55
 """
 
 from __future__ import annotations
@@ -49,7 +56,7 @@ from pathlib import Path
 # feature_extraction.py is elsewhere.
 # ---------------------------------------------------------------------------
 try:
-    from ids.feature_extraction import extract_features
+    from ids.feature_extraction import extract_features, MALICIOUS_IP, MALICIOUS_MAC
 except ImportError as exc:
     sys.exit(
         f"[ERROR] Could not import feature_extraction.py: {exc}\n"
@@ -124,6 +131,24 @@ def _build_parser() -> argparse.ArgumentParser:
             "Omit to disable the unknown-address check."
         ),
     )
+    parser.add_argument(
+        "--malicious-ip",
+        metavar="ip",
+        default=MALICIOUS_IP,
+        help=(
+            f"Known-malicious IP address (default: {MALICIOUS_IP}). "
+            "Packets to/from this IP are labelled malicious."
+        ),
+    )
+    parser.add_argument(
+        "--malicious-mac",
+        metavar="mac",
+        default=MALICIOUS_MAC,
+        help=(
+            f"Known-malicious MAC address (default: {MALICIOUS_MAC}). "
+            "Packets to/from this MAC are labelled malicious."
+        ),
+    )
 
     return parser
 
@@ -154,11 +179,20 @@ def main(argv: list[str] | None = None) -> None:
     print(f"[pcap_to_csv] Input  : {pcap_path}")
     print(f"[pcap_to_csv] Output : {csv_path}")
     print(f"[pcap_to_csv] Window : {args.window}s")
+    print(f"[pcap_to_csv] Malicious IP  : {args.malicious_ip}")
+    print(f"[pcap_to_csv] Malicious MAC : {args.malicious_mac}")
     if args.known:
         print(f"[pcap_to_csv] Known addresses ({len(args.known)}): "
               f"{', '.join(args.known)}")
     else:
         print("[pcap_to_csv] Known addresses : (check disabled)")
+
+    # -----------------------------------------------------------------------
+    # Patch module-level constants if overrides were supplied
+    # -----------------------------------------------------------------------
+    import ids.feature_extraction as _fe
+    _fe.MALICIOUS_IP  = args.malicious_ip
+    _fe.MALICIOUS_MAC = args.malicious_mac.lower()
 
     # -----------------------------------------------------------------------
     # Feature extraction  — NO logic changed from feature_extraction.py

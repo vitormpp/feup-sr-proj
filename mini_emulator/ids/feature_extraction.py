@@ -20,14 +20,51 @@ Design notes
 * No host-identity fields (IP, MAC, absolute TCP seq/ack, IP-ID, checksums)
   ever appear in the output; they are read only for labelling/filtering then
   discarded.
-* Categorical fields (protocol, port-service bucket) are one-hot encoded as
-  sparse bool columns.
+* Categorical fields (protocol, port-service bucket) are one-hot encoded
+  against a FIXED vocabulary defined in _PROTO_VOCAB and _SERVICE_VOCAB.
+  Any value not in the vocabulary is mapped to the `other` bucket before
+  encoding, so the output schema is always identical regardless of what
+  traffic is present in a given capture.  This makes CSV files produced from
+  different captures always compatible with the same trained model.
 * Rolling temporal features use only past packets within the same flow
   (causal / real-time safe, per-flow).
 * ICMP and other portless protocols share a per-protocol sentinel flow key,
   meaning their rolling rates are computed across all hosts using that
   protocol — not per host-pair.  This is a known limitation of the
   IP-free design; see _extract_rows for details.
+
+Fixed output schema
+-------------------
+The complete set of columns written to the CSV is deterministic.  Adding a
+new protocol or port-service to the vocabularies below is the only way to
+grow the schema; all existing CSVs and models must be retrained when that
+happens.
+
+Numeric columns (always present, NaN-filled to 0 where protocol-absent):
+    ip_version, ttl, ip_len, ip_flags_df, ip_flags_mf, ip_frag_offset,
+    tcp_seq_delta, tcp_ack_delta, tcp_window, tcp_data_offset,
+    udp_length, icmp_type, icmp_code, payload_len,
+    flag_fin, flag_syn, flag_rst, flag_psh, flag_ack,
+    flag_urg, flag_ece, flag_cwr,
+    inter_arrival_time, rolling_pkt_rate, rolling_byte_rate,
+    rolling_unique_dports, rolling_syn_rate, rolling_rst_rate
+
+One-hot columns — proto_<name> for each name in _PROTO_VOCAB:
+    proto_TCP, proto_UDP, proto_ICMP, proto_ICMPv6, proto_ARP,
+    proto_BGP, proto_DNS, proto_IGMP, proto_IPv6, proto_GRE,
+    proto_ESP, proto_AH, proto_OSPF, proto_SCTP, proto_other
+
+One-hot columns — sport_service_<name> / dport_service_<name>
+for each name in _SERVICE_VOCAB:
+    *_unknown, *_ephemeral, *_registered, *_other_well_known,
+    *_ftp_data, *_ftp, *_ssh, *_telnet, *_smtp, *_dns, *_dhcp,
+    *_http, *_pop3, *_ntp, *_imap, *_snmp, *_snmp_trap, *_bgp,
+    *_https, *_smb, *_syslog, *_imaps, *_pop3s,
+    *_mysql, *_rdp, *_postgres, *_vnc, *_redis,
+    *_http_alt, *_https_alt, *_other
+
+Target column (last):
+    label
 """
 
 from __future__ import annotations
@@ -49,6 +86,43 @@ MALICIOUS_IP  = "10.162.0.74"
 MALICIOUS_MAC = "02:42:0a:a2:00:4a"   # Scapy always normalises MACs to lowercase
 
 # ---------------------------------------------------------------------------
+# Fixed vocabularies for one-hot encoding
+# ---------------------------------------------------------------------------
+# Every value seen in the data is mapped to one of these before encoding.
+# Anything not in the vocabulary is mapped to "other".  This guarantees a
+# fixed column count regardless of the traffic in a given capture.
+
+# Protocol vocabulary — ARP and BGP are first-class; all others that can
+# appear via IP proto numbers or Scapy layer names are included.  Unknown
+# proto strings (e.g. "proto_253") fall through to "other".
+_PROTO_VOCAB: tuple[str, ...] = (
+    "TCP", "UDP", "ICMP", "ICMPv6",
+    "ARP",                              # layer-2, not an IP proto number
+    "BGP",                              # rides over TCP/179; detected below
+    "DNS",                              # rides over UDP/53; detected below
+    "IGMP", "IPv6", "GRE", "ESP", "AH", "OSPF", "SCTP",
+    "other",
+)
+
+# Port-service vocabulary — matches _PORT_SERVICES plus the catch-all buckets
+# produced by _port_bucket().
+_SERVICE_VOCAB: tuple[str, ...] = (
+    "unknown", "ephemeral", "registered", "other_well_known",
+    "ftp_data", "ftp", "ssh", "telnet", "smtp", "dns", "dhcp",
+    "http", "pop3", "ntp", "imap", "snmp", "snmp_trap", "bgp",
+    "https", "smb", "syslog", "imaps", "pop3s",
+    "mysql", "rdp", "postgres", "vnc", "redis",
+    "http_alt", "https_alt",
+    "other",
+)
+
+# Pre-compute the full ordered list of one-hot column names so the schema
+# is declared in one place and can be imported by other modules if needed.
+PROTO_COLUMNS:   tuple[str, ...] = tuple(f"proto_{p}"          for p in _PROTO_VOCAB)
+SPORT_COLUMNS:   tuple[str, ...] = tuple(f"sport_service_{s}"  for s in _SERVICE_VOCAB)
+DPORT_COLUMNS:   tuple[str, ...] = tuple(f"dport_service_{s}"  for s in _SERVICE_VOCAB)
+
+# ---------------------------------------------------------------------------
 # Helper tables
 # ---------------------------------------------------------------------------
 
@@ -68,9 +142,6 @@ _PORT_SERVICES: dict[int, str] = {
     5900: "vnc",   6379: "redis",    8080: "http_alt", 8443: "https_alt",
 }
 
-# Fields that are NaN when absent (filled with 0 in _encode_and_clean).
-# Declaring them as a constant makes it clear these are intentional absences,
-# not forgotten assignments.
 _TRANSPORT_DEFAULTS: dict = {
     "tcp_seq_delta": np.nan, "tcp_ack_delta": np.nan,
     "tcp_window":    np.nan, "tcp_data_offset": np.nan,
@@ -80,6 +151,10 @@ _TRANSPORT_DEFAULTS: dict = {
     "flag_fin": 0, "flag_syn": 0, "flag_rst": 0, "flag_psh": 0,
     "flag_ack": 0, "flag_urg": 0, "flag_ece": 0, "flag_cwr": 0,
 }
+
+# Pre-built vocab sets for O(1) membership tests
+_PROTO_SET:   frozenset[str] = frozenset(_PROTO_VOCAB)
+_SERVICE_SET: frozenset[str] = frozenset(_SERVICE_VOCAB)
 
 
 def _port_bucket(port: int | None) -> str:
@@ -108,20 +183,18 @@ def _extract_rows(
 
     Labelling rules (applied before any identity field is discarded):
         label=1  if src or dst matches MALICIOUS_IP or MALICIOUS_MAC
-        label=1  if src or dst IP is not in known_ips (when supplied) —
-                 unrecognised addresses are treated as malicious
+        label=1  if src or dst IP is not in known_ips (when supplied)
         label=0  otherwise
 
-    `_flow_key` is stored in each row so that _add_temporal_features can
-    group packets by flow.  It is an anonymous (port-only, no IPs) tuple and
-    is dropped by extract_features before the DataFrame is returned.
-
-    Limitation: ICMP and other portless protocols use a per-protocol sentinel
-    key (None, None, proto_name), grouping all traffic of that protocol into
-    one pseudo-flow regardless of host.  This means rolling rate features for
-    ICMP reflect all hosts, not per-host-pair activity.  Fixing this would
-    require including IP addresses in the key, which violates the no-identity
-    design constraint.
+    Protocol detection order
+    ------------------------
+    Application-layer protocols that ride on top of TCP/UDP are detected
+    here by port number and override the transport-layer proto field:
+        BGP  → TCP/179
+        DNS  → UDP/53
+        DHCP → UDP/67 or 68  (remains as "dhcp" in _PORT_SERVICES;
+                               proto field stays "UDP")
+    ARP is detected via Scapy's ARP layer (no IP layer present).
     """
     rows: list[dict] = []
     prev_seq: dict = defaultdict(lambda: None)
@@ -161,7 +234,7 @@ def _extract_rows(
         elif pkt.haslayer(IPv6):
             ip6 = pkt[IPv6]
             row.update(ip_version=6, ttl=ip6.hlim,
-                       ip_len=ip6.plen + 40,   # +40: fixed IPv6 header bytes
+                       ip_len=ip6.plen + 40,
                        ip_flags_df=0, ip_flags_mf=0, ip_frag_offset=0)
             proto_num = ip6.nh
         else:
@@ -169,19 +242,22 @@ def _extract_rows(
                        ip_flags_df=0, ip_flags_mf=0, ip_frag_offset=0)
             proto_num = 0
 
-        row["proto"] = _PROTO_MAP.get(proto_num, f"proto_{proto_num}")
+        # Base protocol from IP proto number; may be overridden below.
+        proto = _PROTO_MAP.get(proto_num, "other")
+
+        # ARP has no IP layer — detect via Scapy layer.
+        from scapy.all import ARP as ScapyARP
+        if pkt.haslayer(ScapyARP):
+            proto = "ARP"
 
         # ---- transport layer features --------------------------------------
-        # Start with defaults (NaN for protocol-specific fields, 0 for flags).
-        # Each branch below writes only the fields it actually has, keeping
-        # the per-branch code minimal.
         row.update(_TRANSPORT_DEFAULTS)
         sport = dport = None
 
         if pkt.haslayer(TCP):
             tcp          = pkt[TCP]
             sport, dport = tcp.sport, tcp.dport
-            fkey         = (min(sport, dport), max(sport, dport), row["proto"])
+            fkey         = (min(sport, dport), max(sport, dport), "TCP")
 
             ps = prev_seq[fkey] if prev_seq[fkey] is not None else tcp.seq
             pa = prev_ack[fkey] if prev_ack[fkey] is not None else tcp.ack
@@ -203,34 +279,44 @@ def _extract_rows(
             row["flag_ece"] = int(bool(f & 0x40))
             row["flag_cwr"] = int(bool(f & 0x80))
 
+            # Detect application-layer protocols carried over TCP.
+            if sport == 179 or dport == 179:
+                proto = "BGP"
+
         elif pkt.haslayer(UDP):
             udp          = pkt[UDP]
             sport, dport = udp.sport, udp.dport
-            fkey         = (min(sport, dport), max(sport, dport), row["proto"])
+            fkey         = (min(sport, dport), max(sport, dport), "UDP")
             row["udp_length"]  = udp.len
             row["payload_len"] = len(bytes(udp.payload))
 
+            # Detect application-layer protocols carried over UDP.
+            if sport == 53 or dport == 53:
+                proto = "DNS"
+
         elif pkt.haslayer(ICMP):
             icmp = pkt[ICMP]
-            fkey = (None, None, row["proto"])   # sentinel: all ICMP grouped
+            fkey = (None, None, "ICMP")
             row["icmp_type"]   = icmp.type
             row["icmp_code"]   = icmp.code
             row["payload_len"] = len(bytes(icmp.payload))
 
         else:
-            fkey               = (None, None, "unknown")
+            fkey               = (None, None, proto)
             row["payload_len"] = len(pkt)
 
-        row["sport_service"] = _port_bucket(sport)
-        row["dport_service"] = _port_bucket(dport)
-        row["_flow_key"]     = fkey
+        # Map unknown proto strings to "other" to stay within vocabulary.
+        row["proto"]          = proto if proto in _PROTO_SET else "other"
+        row["sport_service"]  = _port_bucket(sport)
+        row["dport_service"]  = _port_bucket(dport)
+        row["_flow_key"]      = fkey
         rows.append(row)
 
     return rows
 
 
 # ---------------------------------------------------------------------------
-# Step 2 – one-hot encode categoricals + fill protocol-specific NaNs
+# Step 2 – fixed-schema one-hot encoding + NaN fill
 # ---------------------------------------------------------------------------
 
 _CATEGORICAL_COLS = ("proto", "sport_service", "dport_service")
@@ -238,20 +324,34 @@ _CATEGORICAL_COLS = ("proto", "sport_service", "dport_service")
 
 def _encode_and_clean(df: pd.DataFrame) -> pd.DataFrame:
     """
-    One-hot encode categorical columns and fill NaNs with 0 (field absent).
-    `label` and `_flow_key` are popped before encoding and restored after.
+    One-hot encode categorical columns against the fixed vocabularies and
+    fill NaNs with 0.  The output always has exactly the same columns,
+    regardless of which categories appear in the data.
     """
     label    = df.pop("label")
     flow_key = df.pop("_flow_key")
 
+    # Map any value outside the vocabulary to "other" before encoding.
+    df["proto"]         = df["proto"].where(
+        df["proto"].isin(_PROTO_SET), other="other")
+    df["sport_service"] = df["sport_service"].where(
+        df["sport_service"].isin(_SERVICE_SET), other="other")
+    df["dport_service"] = df["dport_service"].where(
+        df["dport_service"].isin(_SERVICE_SET), other="other")
+
+    # Convert to fixed-vocabulary Categoricals so get_dummies always
+    # produces every column even when a category is absent from the data.
+    df["proto"] = pd.Categorical(df["proto"], categories=list(_PROTO_VOCAB))
+    df["sport_service"] = pd.Categorical(
+        df["sport_service"], categories=list(_SERVICE_VOCAB))
+    df["dport_service"] = pd.Categorical(
+        df["dport_service"], categories=list(_SERVICE_VOCAB))
+
     df = pd.get_dummies(df, columns=list(_CATEGORICAL_COLS),
-                        drop_first=False, dtype=bool)
+                        drop_first=False, dtype=np.int8)
 
-    num_cols  = df.select_dtypes(include=[np.number]).columns
+    num_cols = df.select_dtypes(include=[np.number]).columns
     df[num_cols] = df[num_cols].fillna(0)
-
-    bool_cols = df.select_dtypes(include=bool).columns
-    df[bool_cols] = df[bool_cols].astype(np.int8)
 
     df["label"]     = label.values
     df["_flow_key"] = flow_key.values
@@ -304,8 +404,6 @@ def _add_temporal_features(df: pd.DataFrame,
     syn_rate   = np.zeros(n)
     rst_rate   = np.zeros(n)
 
-    # Group row indices by flow key; because df is sorted by timestamp,
-    # indices within each group are already in ascending time order.
     flow_groups: dict = defaultdict(list)
     for idx, fk in enumerate(flow_key.values):
         flow_groups[fk].append(idx)
@@ -367,11 +465,10 @@ def extract_features(
     Returns
     -------
     pd.DataFrame
-        One row per retained packet.  The `label` column (last) contains
-        1 for malicious packets and 0 for normal ones.  No host-identity
-        fields are present.  `timestamp` is dropped before return — it is
-        a spurious predictor that overfits to a single capture session and
-        fails completely on captures from different times.
+        One row per retained packet.  The output schema is fixed — see the
+        module docstring for the complete column list.  The `label` column
+        (last) contains 1 for malicious packets and 0 for normal ones.
+        No host-identity fields are present.
     """
     packets = rdpcap(pcap_path)
 

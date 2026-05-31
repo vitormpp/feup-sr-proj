@@ -492,6 +492,22 @@ def main() -> None:
     if "label" not in df.columns:
         sys.exit("CSV must contain a 'label' column.")
 
+    # ---- downsample majority class -----------------------------------------
+    counts         = df["label"].value_counts()
+    minority_n     = counts.min()
+    majority_label = counts.idxmax()
+    minority_label = counts.idxmin()
+
+    df_majority = df[df["label"] == majority_label].sample(
+        n=minority_n, random_state=42)
+    df_minority = df[df["label"] == minority_label]
+    df = pd.concat([df_majority, df_minority]).sample(
+        frac=1, random_state=42).reset_index(drop=True)
+
+    print(f"     Downsampled majority class (label={majority_label}) to "
+          f"{minority_n} samples — dataset now balanced at "
+          f"{len(df)} total rows.")
+
     feature_names = [c for c in df.columns if c != "label"]
     X = df[feature_names].values.astype(np.float32)
     y = df["label"].values
