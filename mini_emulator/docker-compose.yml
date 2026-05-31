@@ -5,7 +5,7 @@ services:
             context: ./new_eth_node
         image: new_ethereum_node
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
     707ec7fa5d3740bf02573cbd0b37e6ea:
         build:
@@ -13,7 +13,7 @@ services:
             dockerfile: dummies/707ec7fa5d3740bf02573cbd0b37e6ea
         image: 707ec7fa5d3740bf02573cbd0b37e6ea
         cpus: 0.2
-        mem_limit: 512m
+        
         mem_reservation: 128m
         depends_on:
             - new_ethereum_node
@@ -24,7 +24,7 @@ services:
             dockerfile: dummies/98a2693c996c2294358552f48373498d
         image: 98a2693c996c2294358552f48373498d
         cpus: 0.2
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
     39e016aa9e819f203ebc1809245a5818:
@@ -33,7 +33,7 @@ services:
             dockerfile: dummies/39e016aa9e819f203ebc1809245a5818
         image: 39e016aa9e819f203ebc1809245a5818
         cpus: 0.2
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
     24e044b795288bc851bbf81da183e7a9:
@@ -42,7 +42,7 @@ services:
             dockerfile: dummies/24e044b795288bc851bbf81da183e7a9
         image: 24e044b795288bc851bbf81da183e7a9
         cpus: 0.2
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -110,7 +110,7 @@ services:
             - CONTAINER_NAME=as160h-host_1-10.160.0.72
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -142,7 +142,7 @@ services:
             - CONTAINER_NAME=as160h-host_2-10.160.0.73
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -177,7 +177,7 @@ services:
             - CONTAINER_NAME=as160brd-router0-10.160.0.254
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -248,7 +248,7 @@ services:
             - CONTAINER_NAME=as161h-host_1-10.161.0.72
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -281,7 +281,7 @@ services:
             - CONTAINER_NAME=as161h-host_2-10.161.0.73
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -317,7 +317,7 @@ services:
             - CONTAINER_NAME=as161brd-router0-10.161.0.254
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -388,7 +388,7 @@ services:
             - CONTAINER_NAME=as162h-host_1-10.162.0.72
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -421,7 +421,7 @@ services:
             - CONTAINER_NAME=as162h-host_2-10.162.0.73
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -454,7 +454,7 @@ services:
             - ECLIPSE_BGP=${ECLIPSE_BGP:-false}
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -490,7 +490,7 @@ services:
             - CONTAINER_NAME=as162brd-router0-10.162.0.254
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -520,7 +520,7 @@ services:
             - CONTAINER_NAME=as103brd-ix103-10.103.0.103
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -533,7 +533,7 @@ services:
             - 5000:5000/tcp
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
@@ -547,7 +547,7 @@ services:
             - 8080:8080/tcp
 
         cpus: 1.5
-        mem_limit: 512m
+        
         mem_reservation: 128m
 
 
