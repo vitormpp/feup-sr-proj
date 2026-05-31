@@ -9,5 +9,6 @@ venvcd/
 __pycache__/
 ids_out/
 model_plots/
-csv_plots/mini_emulator/dataset_final.csv
-mini_emulator/dataset_final.pcap
+csv_plots/
+dataset_final.csv
+dataset_final.pcap
