@@ -13,12 +13,12 @@ Attacks:
   --all        Enable all of the above
 
 Per-attack scheduling (seconds between successive runs of that attack):
-  --arp-interval       S   (default 10)
-  --bgp-interval       S   (default 10)
+  --arp-interval       S   (default 180)
+  --bgp-interval       S   (default 240)
   --synflood-interval  S   (default 60)
 
 SYN flood tuning:
-  --synflood-duration  S   Seconds to flood per run (default 0.1)
+  --synflood-duration  S   Seconds to flood per run (default 0.5)
 
 Global:
   --cycles N   Max runs per attack; 0 = run forever (default 0)
@@ -240,7 +240,7 @@ def _handle_signal(signum, frame):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Launch AS162 attacks, each on its own independent interval.",
+        description="Launch AS160 attacks, each on its own independent interval.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -260,7 +260,7 @@ def main():
     parser.add_argument("--synflood-interval", type=int, default=60,
                         help="Seconds between SYN flood runs (default 60)")
     parser.add_argument("--synflood-duration", type=int, default=0.1,
-                        help="Seconds to SYN flood per run (default 30)")
+                        help="Seconds to SYN flood per run (default 0.1)")
 
     parser.add_argument("--cycles", type=int, default=0,
                         help="Max runs per attack; 0 = forever (default 0)")
@@ -291,7 +291,7 @@ def main():
                       args.bgp_interval))
 
     print(f"\n{CYAN}{BOLD}{'='*60}{RESET}")
-    print(f"{CYAN}{BOLD}  ATTACK ORCHESTRATOR — AS162{RESET}")
+    print(f"{CYAN}{BOLD}  ATTACK ORCHESTRATOR — AS160{RESET}")
     print(f"{CYAN}{BOLD}{'='*60}{RESET}")
     for tag, _, interval in specs:
         log("orchestrator", f"{tag:<9} enabled — interval {interval}s", CYAN)
