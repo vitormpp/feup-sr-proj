@@ -1,5 +1,5 @@
 # =============================================================================
-#  Makefile — AS162 attacks, launched directly from the HOST VM
+#  Makefile — AS160 attacks, launched directly from the HOST VM
 # =============================================================================
 #
 #  The SEED emulator (docker-compose project) lives in ../mini_emulator.
@@ -119,10 +119,10 @@ all:  ## Run every attack (attacks.py --all)
 
 # ---------- Double spend (host VM) ----------
 
-fake-tx:  ## Send the fraudulent tx to the isolated victim (Node 162)
+fake-tx:  ## Send the fraudulent tx to the isolated victim (Node 160)
 	$(PYTHON) fake_tx.py
 
-real-tx:  ## Broadcast the real tx to the main network (Nodes 160 & 161)
+real-tx:  ## Broadcast the real tx to the main network (Nodes 161 & 162)
 	$(PYTHON) real_tx.py
 
 # ---------- Traffic capture (runs inside $(EMULATOR_DIR)) ----------
