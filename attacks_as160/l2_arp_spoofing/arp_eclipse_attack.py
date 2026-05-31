@@ -28,6 +28,7 @@ import signal
 import textwrap
 from datetime import datetime
 from web3 import Web3
+import os
 
 # ──────────────────────────────────────────────
 # CONFIG
@@ -55,10 +56,11 @@ GATEWAY_IP = "10.160.0.254"  # AS160 router
 ADDR_ORIGIN  = "0xCBF1e330F0abD5c1ac979CF2B2B874cfD4902E24"
 ADDR_VICTIM  = "0xF5406927254d2dA7F7c28A61191e3Ff1f2400fe9"
 ADDR_BOB     = "0xaB5AaD8284868B91Eb537d28aB1A159740D54890"
-ARP_SPOOF_SRC = "./arp_spoof.py"
-ARP_SPOOF_DST = "/tmp/arp_spoof.py"
-FAKE_TX_SCRIPT = "./fake_tx.py"
-REAL_TX_SCRIPT = "./real_tx.py"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+ARP_SPOOF_SRC  = os.path.join(_HERE, "arp_spoof.py")
+ARP_SPOOF_DST  = "/tmp/arp_spoof.py"
+FAKE_TX_SCRIPT = os.path.join(_HERE, "..", "fake_tx.py")
+REAL_TX_SCRIPT = os.path.join(_HERE, "..", "real_tx.py")
 
 POLL_INTERVAL     = 3    # seconds between polls
 PEER_POLL_TIMEOUT = 90   # max seconds to wait for peers to appear
