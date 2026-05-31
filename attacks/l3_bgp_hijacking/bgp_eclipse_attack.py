@@ -28,6 +28,7 @@ Usage:
   python3 bgp_eclipse_attack.py --skip-reorg
 """
 
+import os
 import subprocess
 import sys
 import time
@@ -57,8 +58,9 @@ ADDR_ORIGIN = "0xCBF1e330F0abD5c1ac979CF2B2B874cfD4902E24"
 ADDR_VICTIM = "0xF5406927254d2dA7F7c28A61191e3Ff1f2400fe9"
 ADDR_BOB    = "0xaB5AaD8284868B91Eb537d28aB1A159740D54890"
 
-FAKE_TX_SCRIPT = "./fake_tx.py"
-REAL_TX_SCRIPT = "./real_tx.py"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+FAKE_TX_SCRIPT = os.path.join(_HERE, "..", "fake_tx.py")
+REAL_TX_SCRIPT = os.path.join(_HERE, "..", "real_tx.py")
 
 # BIRD config path inside the attacker router container
 BIRD_CONF = "/etc/bird/bird.conf"

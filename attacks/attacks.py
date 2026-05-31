@@ -13,12 +13,12 @@ Attacks:
   --all        Enable all of the above
 
 Per-attack scheduling (seconds between successive runs of that attack):
-  --arp-interval       S   (default 180)
-  --bgp-interval       S   (default 240)
+  --arp-interval       S   (default 10)
+  --bgp-interval       S   (default 10)
   --synflood-interval  S   (default 60)
 
 SYN flood tuning:
-  --synflood-duration  S   Seconds to flood per run (default 0.5)
+  --synflood-duration  S   Seconds to flood per run (default 0.1)
 
 Global:
   --cycles N   Max runs per attack; 0 = run forever (default 0)
@@ -224,13 +224,13 @@ def main():
     parser.add_argument("--all", action="store_true",
                         help="Enable every attack")
 
-    parser.add_argument("--arp-interval", type=int, default=180,
-                        help="Seconds between ARP runs (default 180)")
-    parser.add_argument("--bgp-interval", type=int, default=240,
-                        help="Seconds between BGP runs (default 240)")
+    parser.add_argument("--arp-interval", type=int, default=10,
+                        help="Seconds between ARP runs (default 10)")
+    parser.add_argument("--bgp-interval", type=int, default=10,
+                        help="Seconds between BGP runs (default 10)")
     parser.add_argument("--synflood-interval", type=int, default=60,
                         help="Seconds between SYN flood runs (default 60)")
-    parser.add_argument("--synflood-duration", type=int, default=0.5,
+    parser.add_argument("--synflood-duration", type=int, default=0.1,
                         help="Seconds to SYN flood per run (default 30)")
 
     parser.add_argument("--cycles", type=int, default=0,
@@ -282,7 +282,7 @@ def main():
     try:
         while any(t.is_alive() for t in threads):
             for t in threads:
-                t.join(timeout=0.5)
+                t.join(timeout=0.1)
             if _shutdown.is_set():
                 break
     except KeyboardInterrupt:

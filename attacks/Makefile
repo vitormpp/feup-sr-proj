@@ -51,15 +51,15 @@ COMPOSE_CMD      := docker-compose -f $(COMPOSE_FILE) -p $(PROJECT)
 
 # Attacks run from the host VM. synflood opens raw sockets and the ARP/BGP
 # scripts touch container namespaces, so they need root.
-PYTHON           ?= python3
-SUDO             ?= sudo
+PYTHON           ?= ~/venv/bin/python3
+SUDO             ?= sudo -E
 ATTACKS          := ./attacks.py
 SYNFLOOD_BIN     := synflood/synflood
 ATTACK_ARGS      ?=
 
 # Attack selectors — set each to 1 to enable it for `make attack`.
-SYNFLOOD         ?= 0
-ARP              ?= 0
+SYNFLOOD         ?= 1
+ARP              ?= 1
 BGP              ?= 0
 
 # Assemble the attacks.py flags from the selectors above.
