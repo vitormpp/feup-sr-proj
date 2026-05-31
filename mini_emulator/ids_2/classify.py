@@ -57,7 +57,7 @@ _CLASSIFIERS = {
     "knn": KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
 }
 
-DEFAULT_ALGOS = ["rf", "lr","svm", "dt", "knn"]
+DEFAULT_ALGOS = ["rf", "lr", "dt", "knn"]
 
 # ---------------------------------------------------------------------------
 # Main
