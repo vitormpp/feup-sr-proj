@@ -156,6 +156,7 @@ _shutdown = threading.Event()
 # ──────────────────────────────────────────────
 def synflood_once(duration):
     """Flood a single randomly-chosen target for `duration` seconds, then stop."""
+
     if not os.path.exists(SYNFLOOD_BIN):
         log("synflood", f"binary not found at {SYNFLOOD_BIN} — skipping", RED)
         return
