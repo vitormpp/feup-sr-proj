@@ -29,12 +29,23 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_validate
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.model_selection import (
+    StratifiedKFold,
+    cross_val_predict,
+    cross_validate,
+)
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+
+try:
+    # sklearn >= 1.0 ships StratifiedGroupKFold; fall back to GroupKFold if not.
+    from sklearn.model_selection import StratifiedGroupKFold
+except ImportError:  # pragma: no cover
+    StratifiedGroupKFold = None  # type: ignore[assignment]
+from sklearn.model_selection import GroupKFold
 
 from . import config
 
@@ -50,8 +61,30 @@ _SCORING = {
 }
 
 
-def _build_classifiers():
+def _build_classifiers(profile: str = "flow") -> dict:
+    """Build the classifier zoo for a given workload profile.
+
+    ``profile="flow"`` keeps the original NFStream-style zoo (KNN + LogReg
+    work fine on a few thousand flows).
+
+    ``profile="packet"`` swaps out the choices that don't survive at packet
+    scale: KNN gets dropped (O(n^2) at predict), LogReg's L-BFGS solver
+    gets replaced by SGD with log-loss (linear in n).
+    """
     rs = config.RANDOM_STATE
+    if profile == "packet":
+        return {
+            "RandomForest": RandomForestClassifier(
+                n_estimators=200, class_weight="balanced",
+                random_state=rs, n_jobs=-1),
+            "HistGradientBoosting": HistGradientBoostingClassifier(
+                random_state=rs),
+            "SGDLogReg": SGDClassifier(
+                loss="log_loss", class_weight="balanced",
+                max_iter=20, tol=1e-3, random_state=rs, n_jobs=-1),
+            "DecisionTree": DecisionTreeClassifier(
+                class_weight="balanced", random_state=rs),
+        }
     return {
         "RandomForest": RandomForestClassifier(
             n_estimators=200, class_weight="balanced", random_state=rs, n_jobs=-1),
@@ -68,36 +101,75 @@ def _pipeline(estimator) -> Pipeline:
     return Pipeline([("scaler", StandardScaler()), ("clf", estimator)])
 
 
-def cross_validate_classifiers(X, y, n_splits: int = 5) -> dict:
-    """Run stratified K-fold CV for every classifier.
+def _make_cv(y: np.ndarray, groups: np.ndarray | None, n_splits: int):
+    """Pick the right CV splitter and the actual usable n_splits.
 
-    Returns ``{name: {...}}`` with CV score arrays, mean/std, out-of-fold
-    predictions + probabilities, and a final model fit on all data.
+    When ``groups`` is given (per-packet data), we need GroupKFold so that all
+    packets of the same flow instance stay in the same fold -- otherwise a
+    classifier just memorises flow fingerprints and reports impossible F1.
+    Prefer StratifiedGroupKFold if available to preserve class balance per
+    fold; fall back to plain GroupKFold otherwise.
     """
-    X = np.asarray(X, dtype=np.float32)
-    y = np.asarray(y, dtype=int)
-
     minority = int(min(np.bincount(y))) if len(np.unique(y)) > 1 else 0
     if minority < 2:
         raise SystemExit(
             f"Need >=2 samples of each class for CV; minority class has {minority}.")
     n_splits = max(2, min(n_splits, minority))
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True,
-                         random_state=config.RANDOM_STATE)
-    log.info("Stratified %d-fold CV on %d flows (%d malicious).",
-             n_splits, len(y), int(y.sum()))
+
+    if groups is None:
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True,
+                             random_state=config.RANDOM_STATE)
+        log.info("Stratified %d-fold CV on %d rows (%d malicious).",
+                 n_splits, len(y), int(y.sum()))
+        return cv, n_splits
+
+    # Number of distinct groups bounds the achievable split count too.
+    n_groups = int(len(set(groups)))
+    n_splits = max(2, min(n_splits, n_groups))
+    if StratifiedGroupKFold is not None:
+        cv = StratifiedGroupKFold(n_splits=n_splits, shuffle=True,
+                                  random_state=config.RANDOM_STATE)
+    else:
+        cv = GroupKFold(n_splits=n_splits)
+    log.info("Group %d-fold CV on %d rows / %d flow groups (%d malicious).",
+             n_splits, len(y), n_groups, int(y.sum()))
+    return cv, n_splits
+
+
+def cross_validate_classifiers(X, y, n_splits: int = 5,
+                               groups: np.ndarray | None = None,
+                               profile: str = "flow") -> dict:
+    """Run K-fold CV for every classifier.
+
+    Pass ``groups`` (one id per row, e.g. the flow-instance id) to switch from
+    plain StratifiedKFold to (Stratified)GroupKFold. With per-packet data the
+    latter is mandatory to avoid leakage; classifier metrics computed without
+    it on packet rows are not believable.
+
+    ``profile`` selects the classifier zoo -- "packet" drops KNN and swaps
+    LogReg for SGD so packet-scale CV finishes in minutes rather than hours.
+    """
+    X = np.asarray(X, dtype=np.float32)
+    y = np.asarray(y, dtype=int)
+    if groups is not None:
+        groups = np.asarray(groups)
+
+    cv, _ = _make_cv(y, groups, n_splits)
 
     results: dict[str, dict] = {}
-    for name, est in _build_classifiers().items():
+    for name, est in _build_classifiers(profile=profile).items():
         log.info("  cross-validating %s ...", name)
         pipe = _pipeline(est)
         cv_scores = cross_validate(pipe, X, y, cv=cv, scoring=_SCORING,
-                                   n_jobs=-1, return_train_score=False)
+                                   n_jobs=-1, return_train_score=False,
+                                   groups=groups)
         # out-of-fold predictions for an honest confusion matrix / curves
-        y_oof = cross_val_predict(pipe, X, y, cv=cv, n_jobs=-1)
+        y_oof = cross_val_predict(pipe, X, y, cv=cv, n_jobs=-1,
+                                  groups=groups)
         try:
-            proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba",
-                                      n_jobs=-1)[:, 1]
+            proba = cross_val_predict(pipe, X, y, cv=cv,
+                                      method="predict_proba",
+                                      n_jobs=-1, groups=groups)[:, 1]
         except Exception:  # estimator without predict_proba
             proba = None
 

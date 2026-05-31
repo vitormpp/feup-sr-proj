@@ -74,8 +74,16 @@ def _anomaly_score(est, X):
 def train_outlier_models(X_train_normal: np.ndarray,
                           X_test: np.ndarray,
                           y_test: np.ndarray,
-                          contamination: float = 0.05) -> dict:
-    """Fit every detector on normal-only data; score the held-out test set."""
+                          contamination: float = 0.05,
+                          skip_models: set[str] | None = None) -> dict:
+    """Fit every detector on normal-only data; score the held-out test set.
+
+    ``skip_models`` lets callers exclude detectors that don't suit a given
+    feature shape -- e.g. EllipticEnvelope assumes Gaussian inputs and is a
+    poor fit for per-packet rows full of boolean one-hots and zero-inflated
+    counts.
+    """
+    skip_models = skip_models or set()
     scaler = StandardScaler()
     X_tr = scaler.fit_transform(X_train_normal)
     X_te = scaler.transform(X_test)
@@ -85,6 +93,9 @@ def train_outlier_models(X_train_normal: np.ndarray,
 
     results: dict[str, dict] = {}
     for name, est in _build_detectors(contamination).items():
+        if name in skip_models:
+            log.info("  skipping %s (requested by caller)", name)
+            continue
         log.info("  fitting %s ...", name)
         try:
             est.fit(X_tr)

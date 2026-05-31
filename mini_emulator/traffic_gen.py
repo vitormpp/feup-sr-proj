@@ -30,14 +30,14 @@ import logging
 # Configuration
 # ---------------------------------------------------------------------------
 
-DELAY_MIN = float(os.environ.get("TRAFFIC_DELAY_MIN", "0.1"))
+DELAY_MIN = float(os.environ.get("TRAFFIC_DELAY_MIN", "0.5"))
 DELAY_MAX = float(os.environ.get("TRAFFIC_DELAY_MAX", "1.5"))
 
 # All host IPs in the emulator (static topology).
 ALL_HOSTS = [
     "10.160.0.71", "10.160.0.72", "10.160.0.73",  # AS 160
     "10.161.0.71", "10.161.0.72", "10.161.0.73",  # AS 161
-    "10.162.0.71", "10.162.0.72", "10.162.0.73", "10.162.0.74",  # AS 162
+    "10.162.0.71", "10.162.0.72", "10.162.0.73",  # AS 162
 ]
 
 # Protocol selection weights (no SSH)
@@ -90,7 +90,7 @@ _DOMAINS = [
     "node-10-160-0-71.local", "node-10-160-0-72.local", "node-10-160-0-73.local",
     "node-10-161-0-71.local", "node-10-161-0-72.local", "node-10-161-0-73.local",
     "node-10-162-0-71.local", "node-10-162-0-72.local", "node-10-162-0-73.local",
-    "node-10-162-0-74.local",
+    
 ]
 
 
@@ -452,7 +452,7 @@ def main():
         target = _pick_target(local_ips)
         if target is None:
             log.warning("No remote targets available, sleeping...")
-            time.sleep(10)
+            time.sleep(1)
             continue
 
         protocol = random.choices(PROTOCOLS, weights=WEIGHTS, k=1)[0]
