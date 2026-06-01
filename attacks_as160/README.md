@@ -1,6 +1,6 @@
-# Ethereum Proof-of-Work: Eclipse Attack & Double Spend Guide
+# Ethereum Proof-of-Work: Network Partition Attack & Double Spend Guide
 
-This repository demonstrates the execution of an Eclipse Attack on a private Ethereum Proof-of-Work (PoW) network, followed by a Double Spend exploit. 
+This repository demonstrates the execution of a Network Partition Attack on a private Ethereum Proof-of-Work (PoW) network, followed by a Double Spend exploit. 
 
 To demonstrate different threat models, this project includes two distinct methods for isolating the victim node: a localized **Layer 2 ARP Spoofing** attack, and a global **Layer 3 BGP Hijacking** attack.
 
@@ -14,7 +14,7 @@ The network is built using the SeedEmu framework across three interconnected Aut
 
 ---
 
-## Phase 1: The Eclipse Attack (Isolation)
+## Phase 1: The Network Partition Attack (Isolation)
 
 To initiate the exploit, the Victim must first be partitioned from the rest of the network. Select **one** of the following attack vectors to execute Phase 1, then return to this guide to proceed with Phase 2.
 
