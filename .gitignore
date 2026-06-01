@@ -14,4 +14,5 @@ dataset_final.csv
 dataset_final.pcap
 dataset_validation.csv
 dataset_validation.pcap
-
+out_cls/
+out_od/
