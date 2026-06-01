@@ -1,8 +1,8 @@
-# Layer 2: ARP Spoofing Eclipse Attack
+# Layer 2: ARP Spoofing Network Partition Attack
 
 This module executes a localized Man-in-the-Middle (MitM) attack to isolate the victim node.
 
-## Phase 1: The Eclipse Attack (Isolation)
+## Phase 1: The Network Partition Attack (Isolation)
 
 > **Automation Alternative:** To execute the automated attack sequence instead of entering the step-by-step terminal commands below, ensure your environment is initialized (`docker-compose up -d`) and run [`python3 arp_eclipse_attack.py`](arp_eclipse_attack.py) from the Host VM.
 
@@ -39,7 +39,7 @@ iptables -A FORWARD -s 10.160.0.71 -p udp -j DROP
 iptables -A FORWARD -d 10.160.0.71 -p udp -j DROP
 ```
 
-**4. Verify the Eclipse (From Host VM):**
+**4. Verify the Network Partition (From Host VM):**
 ```bash
 docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 geth attach --exec "admin.peers.length"
 docker exec -it as160h-Ethereum-POW-00-Miner-BootNode-10.160.0.71 ip neigh

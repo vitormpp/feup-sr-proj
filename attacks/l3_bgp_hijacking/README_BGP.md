@@ -1,4 +1,4 @@
-# Layer 3: BGP Hijacking Eclipse Attack
+# Layer 3: BGP Hijacking Network Partition Attack
 
 This module executes a global routing infrastructure attack to isolate the victim node at the Network layer.
 
@@ -9,7 +9,7 @@ This module executes a global routing infrastructure attack to isolate the victi
 
 ---
 
-## Phase 1: The Eclipse Attack (BGP Hijacking)
+## Phase 1: The Network Partition Attack (BGP Hijacking)
 
 > **Automation Alternative:** To execute the automated attack sequence instead of entering the step-by-step terminal commands below, ensure your environment is initialized (`docker-compose up -d`) and run [`python3 bgp_eclipse_attack.py`](bgp_eclipse_attack.py) from the Host VM.
 
@@ -48,7 +48,7 @@ Instruct BIRD to reload the configuration, prompting it to broadcast the poisone
 ```bash
 birdc configure
 ```
-**4. Verify the Eclipse (From Host VM):**
+**4. Verify the Network Partition (From Host VM):**
 Inspect AS160's border router routing table to confirm P2P traffic is now being misdirected to the Attacker AS (AS161) instead of the legitimate Victim AS (AS162).
 
 ```bash
