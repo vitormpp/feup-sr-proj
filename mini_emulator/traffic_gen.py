@@ -35,7 +35,7 @@ DELAY_MAX = float(os.environ.get("TRAFFIC_DELAY_MAX", "1.5"))
 
 # All host IPs in the emulator (static topology).
 ALL_HOSTS = [
-    "10.160.0.71", "10.160.0.72", "10.160.0.73",  # AS 160
+    "10.160.0.71", "10.160.0.73",  # AS 160
     "10.161.0.71", "10.161.0.72", "10.161.0.73",  # AS 161
     "10.162.0.71", "10.162.0.72", "10.162.0.73",  # AS 162
 ]

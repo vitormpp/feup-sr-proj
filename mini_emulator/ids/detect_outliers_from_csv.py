@@ -51,7 +51,7 @@ _DETECTORS = {
     "envelope": EllipticEnvelope(contamination=0.1, random_state=42),
 }
 
-DEFAULT_ALGOS = ["iforest", "lof"]
+DEFAULT_ALGOS = ["iforest", "lof", "ocsvm", "envelope"]
 
 # ---------------------------------------------------------------------------
 # Main

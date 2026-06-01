@@ -12,7 +12,7 @@ services:
             context: .
             dockerfile: dummies/707ec7fa5d3740bf02573cbd0b37e6ea
         image: 707ec7fa5d3740bf02573cbd0b37e6ea
-        cpus: 0.2
+        cpus: 2.0
         
         mem_reservation: 128m
         depends_on:
@@ -23,7 +23,7 @@ services:
             context: .
             dockerfile: dummies/98a2693c996c2294358552f48373498d
         image: 98a2693c996c2294358552f48373498d
-        cpus: 0.2
+        cpus: 2.0
         
         mem_reservation: 128m
 
@@ -32,7 +32,7 @@ services:
             context: .
             dockerfile: dummies/39e016aa9e819f203ebc1809245a5818
         image: 39e016aa9e819f203ebc1809245a5818
-        cpus: 0.2
+        cpus: 2.0
         
         mem_reservation: 128m
 
@@ -41,7 +41,7 @@ services:
             context: .
             dockerfile: dummies/24e044b795288bc851bbf81da183e7a9
         image: 24e044b795288bc851bbf81da183e7a9
-        cpus: 0.2
+        cpus: 2.0
         
         mem_reservation: 128m
 
