@@ -99,7 +99,7 @@ CLASSIFIERS = {
     "knn": KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
 }
 CLF_NEEDS_SCALE = {"lr", "svm", "knn"}
-_DEFAULT_ALGOS = [k for k in CLASSIFIERS if k != "knn" and k != "svm"]
+_DEFAULT_ALGOS = [k for k in CLASSIFIERS if  k != "svm"]
 
 DETECTORS = {
     "iforest":  IsolationForest(contamination="auto", random_state=42, n_jobs=-1),
