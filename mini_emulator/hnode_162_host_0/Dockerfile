@@ -1,6 +1,6 @@
 FROM 24e044b795288bc851bbf81da183e7a9
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3.9 python3.9-venv python3.9-distutils && rm -rf /var/lib/apt/lists/*
 COPY 082b96ec819c95ae773daebde675ef80 /start.sh
 COPY d18858afc6bb66ec3a19d872077acfd2 /seedemu_sniffer
 COPY 17ac2d812a99a91e7f747e1defb72a29 /seedemu_worker
@@ -26,5 +26,14 @@ RUN wget -qO /tmp/geth.tar.gz https://gethstore.blob.core.windows.net/builds/get
 	rm -rf /tmp/geth.tar.gz /tmp/geth-install && \
 	geth version
 RUN mkdir -p /root/.ethash && geth makedag 0 /root/.ethash 2>&1 | tail -5
+RUN wget -qO /tmp/get-pip.py https://bootstrap.pypa.io/pip/3.9/get-pip.py && \
+    python3.9 /tmp/get-pip.py && \
+    rm /tmp/get-pip.py && \
+    python3.9 -m pip install \
+        'numpy>=2.0' \
+        'scikit-learn>=1.3.0' \
+        pandas \
+        joblib \
+        scapy
 CMD ["/start.sh"]
 

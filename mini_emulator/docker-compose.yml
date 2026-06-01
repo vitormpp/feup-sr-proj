@@ -339,6 +339,12 @@ services:
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
             - ./traffic_gen.py:/traffic_gen.py:ro
+            # Real-time IDS: app package + trained models (run inside this node).
+            # main.py resolves its package root two dirs above itself, so the
+            # `ids` package lives at /opt/ids-app/ids and the default RF model at
+            # /opt/ids-app/out_cls/rf.joblib.
+            - ./ids:/opt/ids-app/ids:ro
+            - ./out_cls:/opt/ids-app/out_cls:ro
 
         labels:
             org.seedsecuritylabs.seedemu.meta.asn: "162"

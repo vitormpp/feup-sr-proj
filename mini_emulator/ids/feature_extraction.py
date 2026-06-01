@@ -443,6 +443,58 @@ def _add_temporal_features(df: pd.DataFrame,
 # Public API
 # ---------------------------------------------------------------------------
 
+def extract_features_from_packets(
+    packets,
+    known_addresses: Collection[str] | None = None,
+    window_seconds: float = 1.0,
+    *,
+    with_label: bool = True,
+) -> pd.DataFrame:
+    """
+    Run the full feature pipeline over an in-memory iterable of scapy packets.
+
+    This is the streaming-friendly core shared by ``extract_features`` (which
+    reads a PCAP from disk) and the real-time sniffer in ``real_time/main.py``
+    (which feeds a sliding buffer of just-captured packets).  Using this single
+    code path guarantees that live inference sees byte-for-byte the same feature
+    schema the models were trained on.
+
+    Parameters
+    ----------
+    packets : iterable of scapy packets
+        Already-loaded packets (e.g. from ``rdpcap`` or ``sniff``).
+    known_addresses : collection of str, optional
+        Whitelist of known-good IPs; see ``extract_features``.
+    window_seconds : float
+        Look-back window for rolling temporal features.
+    with_label : bool
+        Keep the ``label`` column (ground truth) when True.  Real-time
+        inference passes False, since the model — not the labelling rule —
+        decides the verdict.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned feature rows in the fixed schema, or an empty DataFrame if
+        ``packets`` is empty.  ``timestamp`` and ``_flow_key`` are dropped.
+    """
+    known_ips: frozenset[str] | None = (
+        frozenset(known_addresses) if known_addresses is not None else None
+    )
+
+    rows = _extract_rows(packets, known_ips)
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df = _encode_and_clean(df)
+    df = _add_temporal_features(df, window_seconds)
+    df = df.drop(columns=["timestamp", "_flow_key"])
+    if not with_label:
+        df = df.drop(columns=["label"])
+    return df
+
+
 def extract_features(
     pcap_path: str,
     known_addresses: Collection[str] | None = None,
@@ -471,19 +523,10 @@ def extract_features(
         No host-identity fields are present.
     """
     packets = rdpcap(pcap_path)
-
-    known_ips: frozenset[str] | None = (
-        frozenset(known_addresses) if known_addresses is not None else None
-    )
-
-    rows = _extract_rows(packets, known_ips)
-    if not rows:
+    df = extract_features_from_packets(packets, known_addresses, window_seconds)
+    if df.empty:
         raise ValueError(
             "No packets survived filtering.  Check MALICIOUS_IP / "
             "MALICIOUS_MAC constants and your known_addresses whitelist."
         )
-
-    df = pd.DataFrame(rows)
-    df = _encode_and_clean(df)
-    df = _add_temporal_features(df, window_seconds)
-    return df.drop(columns=["timestamp", "_flow_key"])
+    return df
