@@ -89,9 +89,34 @@ def _predict(features: pd.Series) -> int:
 # Packet summary (Wireshark-style fields from the raw scapy packet)
 # ---------------------------------------------------------------------------
 
+def _proto_from_layers(pkt) -> str:
+    """Detect protocol directly from scapy's parsed layer stack."""
+    try:
+        from scapy.contrib.bgp import BGPHeader
+        if pkt.haslayer(BGPHeader):
+            return "BGP"
+    except Exception:
+        pass
+
+    try:
+        from scapy.layers.dns import DNS
+        if pkt.haslayer(DNS):
+            return "DNS"
+    except Exception:
+        pass
+
+    if pkt.haslayer(ScapyARP): return "ARP"
+    if pkt.haslayer(ICMP):     return "ICMP"
+    if pkt.haslayer(TCP):      return "TCP"
+    if pkt.haslayer(UDP):      return "UDP"
+    if pkt.haslayer(IPv6):     return "IPv6"
+    if pkt.haslayer(IP):       return "IP"
+
+    return pkt.lastlayer().name.upper()[:8]
+
+
 def _packet_summary(pkt) -> dict:
     src = dst = "-"
-    proto = "OTHER"
     length = len(pkt)
     info = ""
 
@@ -102,30 +127,25 @@ def _packet_summary(pkt) -> dict:
     elif pkt.haslayer(ScapyARP):
         arp = pkt[ScapyARP]
         src, dst = arp.psrc, arp.pdst
-        proto = "ARP"
-        if arp.op == 1:
-            info = f"Who has {arp.pdst}? Tell {arp.psrc}"
-        else:
-            info = f"{arp.psrc} is at {arp.hwsrc}"
+
+    proto = _proto_from_layers(pkt)
 
     if pkt.haslayer(TCP):
         tcp = pkt[TCP]
-        proto = "TCP"
         flag_names = [(0x02, "SYN"), (0x10, "ACK"), (0x01, "FIN"),
                       (0x04, "RST"), (0x08, "PSH"), (0x20, "URG")]
         flags = [name for bit, name in flag_names if tcp.flags & bit]
         flag_str = f" [{', '.join(flags)}]" if flags else ""
-        if tcp.sport == 179 or tcp.dport == 179:
-            proto = "BGP"
         info = f"{tcp.sport} -> {tcp.dport}{flag_str}  Seq={tcp.seq}  Win={tcp.window}"
     elif pkt.haslayer(UDP):
         udp = pkt[UDP]
-        proto = "DNS" if (udp.sport == 53 or udp.dport == 53) else "UDP"
         info = f"{udp.sport} -> {udp.dport}  Len={udp.len}"
     elif pkt.haslayer(ICMP):
         icmp = pkt[ICMP]
-        proto = "ICMP"
         info = f"Type={icmp.type}  Code={icmp.code}"
+    elif pkt.haslayer(ScapyARP):
+        arp = pkt[ScapyARP]
+        info = f"Who has {arp.pdst}? Tell {arp.psrc}" if arp.op == 1 else f"{arp.psrc} is at {arp.hwsrc}"
 
     return {
         "time": f"{float(pkt.time) - _CAPTURE_START:.6f}",
