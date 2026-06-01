@@ -3,7 +3,7 @@
 Gabriela Silva, Pedro Oliveira, Sagun Paudel, Vítor Pires
 
 > [!WARNING]
-> This project is for educational use in a controlled, emulated environment as part of the Network Security (SR) course at FEUP. Do not run these attacks against networks you do not own or are not authorized to test.
+> This project is for educational use in a controlled, emulated environment as part of the [Network Security (SR)](https://sigarra.up.pt/feup/pt/ucurr_geral.ficha_uc_view?pv_ocorrencia_id=560285) course at FEUP. Do not run these attacks against networks you do not own or are not authorized to test.
 
 This project studies attacks against a private Ethereum Proof-of-Work network and builds a machine-learning Intrusion Detection System (IDS) to detect them.
 
