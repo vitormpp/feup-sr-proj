@@ -34,6 +34,7 @@ RUN wget -qO /tmp/get-pip.py https://bootstrap.pypa.io/pip/3.9/get-pip.py && \
         'scikit-learn>=1.3.0' \
         pandas \
         joblib \
-        scapy
+        scapy \
+        flask
 CMD ["/start.sh"]
 

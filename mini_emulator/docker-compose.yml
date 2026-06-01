@@ -336,6 +336,9 @@ services:
             net_162_net0:
                 ipv4_address: 10.162.0.71
 
+        ports:
+            - "5001:5001/tcp"
+
         volumes:
             - ./eth_startup.py:/eth_startup.py:ro
             - ./traffic_gen.py:/traffic_gen.py:ro
