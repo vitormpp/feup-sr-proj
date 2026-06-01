@@ -1,4 +1,5 @@
-emulator_code/
+seed_env/
+*.bin
 mini_emulator/captures/
 mini_emulator/captures_full/
 mini_emulator/captures_zeek/
