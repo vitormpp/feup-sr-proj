@@ -1,32 +1,22 @@
 # Machine-Learning-Based Traffic Analysis for Intrusion Detection in Peer-to-Peer Networks
 
-| Group Member   | Student Number |
-| -------------- | -------------- |
-| Gabriela Silva | 202207540      |
-| Pedro Oliveira | 202208345      |
-| Sagun Paudel   | 202512350      |
-| Vítor Pires    | 202207301      |
+Gabriela Silva, Pedro Oliveira, Sagun Paudel, Vítor Pires
 
+> [!WARNING]
+> This project is for educational use in a controlled, emulated environment as part of the Network Security (SR) course at FEUP. Do not run these attacks against networks you do not own or are not authorized to test.
 
 This project studies attacks against a private Ethereum Proof-of-Work network and builds a machine-learning Intrusion Detection System (IDS) to detect them.
 
 It has two parts:
 
-1. **Attacks** — isolate a victim miner and perform a Double Spend, plus a SYN flood denial-of-service attack.
-2. **IDS** — capture network traffic, extract features, and train models to classify or flag malicious packets, including a real-time live dashboard.
+1. **Attacks**: isolate a victim miner and perform a Double Spend, plus a SYN flood denial-of-service attack.
+2. **IDS**: capture network traffic, extract features, and train models to classify or flag malicious packets, including a real-time live dashboard.
 
 The network is emulated with the [SeedEmu](https://github.com/seed-labs/seed-emulator) framework and runs as a set of Docker containers.
 
 
-## Repository Layout
 
-| Path                | Description                                                              |
-| ------------------- | ------------------------------------------------------------------------ |
-| `mini_emulator/`    | Docker-based SEED emulator, traffic capture tooling, and the IDS.        |
-| `mini_emulator/ids/`| ML intrusion detection: feature extraction, classifiers, outlier models. |
-| `attacks/`          | Attack scripts and guides for the scenario where **AS 162** is the victim.|
-| `attacks_as160/`    | Same attacks, for the scenario where **AS 160** (BootNode) is the victim. |
-| `temp/`             | Container-native versions of the attack scripts.                         |
+## Repository Layout
 
 ```
 feup-sr-proj/
@@ -56,12 +46,6 @@ feup-sr-proj/
 └── temp/                           # Container-native attack scripts
 ```
 
-## Requirements
-
-- Docker and `docker-compose`
-- Python 3.9+
-- Python packages: `web3<6`, `scapy`, `scikit-learn`, `pandas`, `numpy`,
-  `joblib`, `flask`
 
 ## Network Architecture
 
@@ -71,22 +55,33 @@ Three interconnected Autonomous Systems (AS), each running an Ethereum PoW miner
 - **AS 161** — `10.161.0.71` Miner
 - **AS 162** — `10.162.0.71` Miner
 
-Depending on the scenario, one node is chosen as the victim and one node (or a
-border router) acts as the attacker.
+Depending on the scenario, one node is chosen as the victim and one node or a border router acts as the attacker.
 
 ## The Attacks
 
-The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md)
-(and [`attacks_as160/README.md`](attacks_as160/README.md) for the AS 160
-scenario). The exploit runs in three phases:
+The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (and [`attacks_as160/README.md`](attacks_as160/README.md) for the AS 160 scenario). The exploit runs in three phases:
 
-1. **Eclipse (Isolation)** — partition the victim from the network, using either
-   [Layer 2 ARP spoofing](attacks/l2_arp_spoofing/README_ARP.md) or
-   [Layer 3 BGP hijacking](attacks/l3_bgp_hijacking/README_BGP.md).
-2. **Double Spend** — send two conflicting transactions reusing the same nonce:
-   a fake one to the isolated victim and a real one to the main network.
-3. **Chain Reorganization** — reconnect the network so the longest chain wins
-   and the isolated transaction is discarded.
+1. **Isolation**: partition the victim from the network, using either
+   [ARP spoofing](attacks/l2_arp_spoofing/README_ARP.md) or
+   [BGP hijacking](attacks/l3_bgp_hijacking/README_BGP.md).
+
+
+<div align="center">
+    <img src="assets/arp_spoofing.png" width="408">
+    <img src="assets/bgp_hijacking.png" width="400">
+    <p><b>Figure 1:</b> Arp Spoofing & BGP Hijacking. </p>
+</div>
+
+2. **Double Spend**:send two conflicting transactions reusing the same nonce: a fake one to the isolated victim and a real one to the main network.
+
+<div align="center">
+    <img src="assets/ds1.png" width="408">
+    <img src="assets/ds2.png" width="400">
+    <img src="assets/ds3.png" width="400">
+    <p><b>Figure 2:</b> ouble-spending attack: balance states observed across the three phases of the exploit.</p>
+</div>
+
+3. **Chain Reorganization** — reconnect the network so the longest chain wins and the isolated transaction is discarded.
 
 A SYN flood attack is also available under `attacks/synflood/`.
 
@@ -132,7 +127,12 @@ python ids/detect_outliers.py capture.pcap --algos iforest lof
 sudo python3.9 ids/real_time/main.py <interface> <model.joblib> <scaler.joblib>
 ```
 
-## Disclaimer
+<div align="center">
+    <img src="assets/ids.png" width="800">
+    <p><b>Figure 1:</b> IDS program during a SYN Flood attack </p>
+</div>
 
-> [!WARNING]
-> This project is for educational use in a controlled, emulated environment as part of the Network Security (SR) course at FEUP. Do not run these attacks against networks you do not own or are not authorized to test.
+## Datasets
+
+The datasets used to obtain the final results can be found  [here](https://drive.google.com/file/d/1XQRVMsgQlKQMW1TC0U6yaVz-Qjlnwbxu/view?usp=drive_link).
+
