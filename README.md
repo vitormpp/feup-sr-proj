@@ -73,7 +73,7 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
 
 
 <div align="center">
-    <img src="assets/arp_spoofing.png" width="408">
+    <img src="assets/arp_spoofing.png" width="401">
     <img src="assets/bgp_hijacking.png" width="400">
     <p><b>Figure 2:</b> ARP Spoofing & BGP Hijacking. </p>
 </div>
@@ -127,7 +127,7 @@ python -m ids.classify.py capture.pcap
 # Train an anomaly detector --- to be launched from mini_emulator/
 python -m ids.detect_outliers capture.pcap
 
-# Real-time detection with a dashboard at http://<node-ip>:5001/ --- to be called from inside the container Miner160
+# Real-time detection with a dashboard at http://<node-ip>:5001/ --- to be called from inside the container Miner162
 sudo python3.9 /opt/ids-app/ids/real_time/main.py <interface> <model.joblib> <scaler.joblib>
 ```
 
