@@ -22,8 +22,8 @@ feup-sr-proj/
 │   ├── README.md                   # Full attack walkthrough
 │   ├── attacks.py                  # Attack orchestration
 │   ├── fake_tx.py / real_tx.py     # Double-spend transactions
-│   ├── l2_arp_spoofing/            # Layer 2 ARP eclipse attack
-│   ├── l3_bgp_hijacking/           # Layer 3 BGP eclipse attack
+│   ├── l2_arp_spoofing/            # ARP Spoofing attack
+│   ├── l3_bgp_hijacking/           # BGP Hijkacking attack
 │   └── synflood/                   # SYN flood denial-of-service
 ├── attacks_as160/                  # Same attacks (victim: AS 160)
 ├── emulator_code/
