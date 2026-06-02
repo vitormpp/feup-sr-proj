@@ -58,6 +58,11 @@ Three interconnected Autonomous Systems (AS), each running an Ethereum PoW miner
 
 Depending on the scenario, one node is chosen as the victim and one node or a border router acts as the attacker.
 
+<div align="center">
+    <img src="assets/setup.png" width="800">
+    <p><b>Figure 1:</b> Network Topology. </p>
+</div>
+
 ## The Attacks
 
 The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (and [`attacks_as160/README.md`](attacks_as160/README.md) for the AS 160 scenario). The exploit runs in three phases:
@@ -70,7 +75,7 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
 <div align="center">
     <img src="assets/arp_spoofing.png" width="408">
     <img src="assets/bgp_hijacking.png" width="400">
-    <p><b>Figure 1:</b> ARP Spoofing & BGP Hijacking. </p>
+    <p><b>Figure 2:</b> ARP Spoofing & BGP Hijacking. </p>
 </div>
 
 2. **Double Spend**: send two conflicting transactions reusing the same nonce: a fake one to the isolated victim and a real one to the main network.
@@ -79,7 +84,7 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
     <img src="assets/ds1.png" width="408">
     <img src="assets/ds2.png" width="400">
     <img src="assets/ds3.png" width="400">
-    <p><b>Figure 2:</b> Double-spending attack: balance states observed across the three phases of the exploit.</p>
+    <p><b>Figure 3:</b> Double-spending attack: balance states observed across the three phases of the exploit.</p>
 </div>
 
 3. **Chain Reorganization**: reconnect the network so the longest chain wins and the isolated transaction is discarded.
@@ -128,7 +133,7 @@ sudo python3.9 /opt/ids-app/ids/real_time/main.py <interface> <model.joblib> <sc
 
 <div align="center">
     <img src="assets/ids.png" width="800">
-    <p><b>Figure 3:</b> IDS program during a SYN Flood attack. </p>
+    <p><b>Figure 4:</b> IDS program during a SYN Flood attack. </p>
 </div>
 
 ## Datasets
