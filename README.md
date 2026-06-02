@@ -70,10 +70,10 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
 <div align="center">
     <img src="assets/arp_spoofing.png" width="408">
     <img src="assets/bgp_hijacking.png" width="400">
-    <p><b>Figure 1:</b> Arp Spoofing & BGP Hijacking. </p>
+    <p><b>Figure 1:</b> ARP Spoofing & BGP Hijacking. </p>
 </div>
 
-2. **Double Spend**:send two conflicting transactions reusing the same nonce: a fake one to the isolated victim and a real one to the main network.
+2. **Double Spend**: send two conflicting transactions reusing the same nonce: a fake one to the isolated victim and a real one to the main network.
 
 <div align="center">
     <img src="assets/ds1.png" width="408">
