@@ -82,7 +82,7 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
     <p><b>Figure 2:</b> Double-spending attack: balance states observed across the three phases of the exploit.</p>
 </div>
 
-3. **Chain Reorganization** — reconnect the network so the longest chain wins and the isolated transaction is discarded.
+3. **Chain Reorganization**: reconnect the network so the longest chain wins and the isolated transaction is discarded.
 
 A SYN flood attack is also available under `attacks/synflood/`.
 
@@ -105,13 +105,13 @@ Attacks can be toggled on and off through Makefile variables.
 The IDS turns captured traffic into labelled features and trains models to
 detect attacks. Scripts live in `mini_emulator/ids/`:
 
-- `feature_extraction.py` — extract per-packet features from a PCAP.
-- `classify.py` — train and evaluate supervised classifiers (Random Forest,
+- `feature_extraction.py`: extract per-packet features from a PCAP.
+- `classify.py`: train and evaluate supervised classifiers (Random Forest,
   Logistic Regression, SVM, Decision Tree, kNN).
-- `detect_outliers.py` — train unsupervised anomaly detectors (Isolation
+- `detect_outliers.py`: train unsupervised anomaly detectors (Isolation
   Forest, One-Class SVM, LOF, Elliptic Envelope) on normal traffic only.
-- `*_from_csv.py` — the same steps starting from an exported CSV.
-- `real_time/main.py` — real-time detection with a live browser dashboard.
+- `*_from_csv.py`: the same steps starting from an exported CSV.
+- `real_time/main.py`: real-time detection with a live browser dashboard.
 
 Example usage:
 
