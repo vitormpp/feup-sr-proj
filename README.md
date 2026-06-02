@@ -12,29 +12,12 @@ It has two parts:
 1. **Attacks**: isolate a victim miner and perform a Double Spend, plus a SYN flood denial-of-service attack.
 2. **IDS**: capture network traffic, extract features, and train models to classify or flag malicious packets, including a real-time live dashboard.
 
-The network is emulated with the [SeedEmu](https://github.com/seed-labs/seed-emulator) framework and runs as a set of Docker containers.
-
-
+The network is emulated with the [Seed Internet Emulator](https://github.com/seed-labs/seed-emulator) framework and runs as a set of Docker containers.
 
 ## Repository Layout
 
 ```
 feup-sr-proj/
-├── mini_emulator/                  # SEED emulator + IDS
-│   ├── docker-compose.yml          # Emulated AS network (Docker)
-│   ├── Makefile                    # Lifecycle, attack toggles, capture
-│   ├── capture_full.sh             # Capture pcaps on all bridges
-│   ├── eth_startup.py              # Node bootstrap
-│   ├── traffic_gen.py              # Background traffic generator
-│   └── ids/                        # Machine-learning IDS
-│       ├── feature_extraction.py   # PCAP -> per-packet features
-│       ├── classify.py             # Supervised classifiers
-│       ├── detect_outliers.py      # Unsupervised anomaly detection
-│       ├── feature_importance.py   # Feature ranking
-│       ├── *_from_csv.py           # Same steps starting from a CSV
-│       ├── real_time/
-│       │   └── main.py             # Live detection + browser dashboard
-│       └── utils/                  # Analysis, evaluation, visualization
 ├── attacks/                        # Attacks (victim: AS 162)
 │   ├── README.md                   # Full attack walkthrough
 │   ├── attacks.py                  # Attack orchestration
@@ -43,7 +26,25 @@ feup-sr-proj/
 │   ├── l3_bgp_hijacking/           # Layer 3 BGP eclipse attack
 │   └── synflood/                   # SYN flood denial-of-service
 ├── attacks_as160/                  # Same attacks (victim: AS 160)
-└── temp/                           # Container-native attack scripts
+├── emulator_code/
+│   │   ├── base-component.py       # Defines Autonomous Systems & BGP routing plane
+│   │   ├── blockchain-poa.py       # Compiles Proof-of-Authority environment 
+│   │   └── blockchain-pow.py       # Compiles Proof-of-Work environment
+└── mini_emulator/                  # SEED emulator + IDS
+    ├── docker-compose.yml          # Emulated AS network (Docker)
+    ├── Makefile                    # Lifecycle, attack toggles, capture
+    ├── capture_full.sh             # Capture pcaps on all bridges
+    ├── eth_startup.py              # Node bootstrap
+    ├── traffic_gen.py              # Background traffic generator
+    └── ids/                        # Machine-learning IDS
+        ├── feature_extraction.py   # PCAP -> per-packet features
+        ├── classify.py             # Supervised classifiers
+        ├── detect_outliers.py      # Unsupervised anomaly detection
+        ├── feature_importance.py   # Feature ranking
+        ├── *_from_csv.py           # Same steps starting from a CSV
+        ├── real_time/
+        │   └── main.py             # Live detection + browser dashboard
+        └── utils/                  # Analysis, evaluation, visualization
 ```
 
 
@@ -78,7 +79,7 @@ The full attack walkthrough lives in [`attacks/README.md`](attacks/README.md) (a
     <img src="assets/ds1.png" width="408">
     <img src="assets/ds2.png" width="400">
     <img src="assets/ds3.png" width="400">
-    <p><b>Figure 2:</b> ouble-spending attack: balance states observed across the three phases of the exploit.</p>
+    <p><b>Figure 2:</b> Double-spending attack: balance states observed across the three phases of the exploit.</p>
 </div>
 
 3. **Chain Reorganization** — reconnect the network so the longest chain wins and the isolated transaction is discarded.
@@ -87,19 +88,17 @@ A SYN flood attack is also available under `attacks/synflood/`.
 
 ## The Emulator
 
-The emulator and its tooling are driven by a Makefile. From `mini_emulator/`:
+The emulator and its tooling are driven by a Makefile. From `attacks/`:
 
 ```bash
 make up               # build and start all containers
-make show-attacks     # show the current attack configuration
-make enable-arp       # toggle attacks (synflood / arp / bgp / all)
+make attack           # launch attack script with currently activated attacks
 make capture          # capture pcaps on all bridges
 make down             # stop and remove containers
-make help             # list all targets
+make restart          # make up + make down
 ```
 
-Attacks can be toggled on and off through the `.env` file (see `make help`) to
-generate both clean and malicious traffic for training and evaluation.
+Attacks can be toggled on and off through Makefile variables.
 
 ## The IDS
 
@@ -117,19 +116,19 @@ detect attacks. Scripts live in `mini_emulator/ids/`:
 Example usage:
 
 ```bash
-# Train a classifier directly from a capture
-python ids/classify.py capture.pcap --algos rf
+# Train a classifier directly from a capture --- to be launched from mini_emulator/
+python -m ids.classify.py capture.pcap 
 
-# Train an anomaly detector
-python ids/detect_outliers.py capture.pcap --algos iforest lof
+# Train an anomaly detector --- to be launched from mini_emulator/
+python -m ids.detect_outliers capture.pcap
 
-# Real-time detection with a dashboard at http://<node-ip>:5001/
-sudo python3.9 ids/real_time/main.py <interface> <model.joblib> <scaler.joblib>
+# Real-time detection with a dashboard at http://<node-ip>:5001/ --- to be called from inside the container Miner160
+sudo python3.9 /opt/ids-app/ids/real_time/main.py <interface> <model.joblib> <scaler.joblib>
 ```
 
 <div align="center">
     <img src="assets/ids.png" width="800">
-    <p><b>Figure 1:</b> IDS program during a SYN Flood attack </p>
+    <p><b>Figure 3:</b> IDS program during a SYN Flood attack. </p>
 </div>
 
 ## Datasets
